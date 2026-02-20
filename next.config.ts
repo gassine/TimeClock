@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
     // your project has type errors.
     ignoreBuildErrors: true,
   },
+  experimental: {
+    // These settings are critical for low-memory environments (1GB RAM)
+    // Limits build to 1 CPU core to prevent OOM kills
+    workerThreads: false,
+    cpus: 1,
+  },
 };
 
 export default nextConfig;

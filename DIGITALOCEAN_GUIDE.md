@@ -97,7 +97,21 @@ Now that you are inside the `time-clock` folder on the server:
     ```
     *This creates the database tables.*
 
-## Part 6: You're Done!
+## Part 6: Initialize Data (Crucial Step)
+
+Before you can log in, you need to create the default Admin user.
+Run this command in the console:
+
+```bash
+docker compose exec timeclock npx prisma db seed
+```
+
+This will create:
+*   **Role**: Admin
+*   **User**: "System Admin"
+*   **PIN**: `0000`
+
+## Part 7: You're Done!
 
 Open your web browser (Chrome/Safari) on your computer.
 Type in: `http://YOUR_SERVER_IP:3000`
@@ -114,3 +128,24 @@ If the server restarts, Docker will automatically restart your app because we co
 If the site doesn't load:
 1.  Check that you included `:3000` at the end of the IP address.
 2.  Wait a minute longer, sometimes it takes a moment to start up initially.
+
+## Part 7: How to Update Your App
+
+When you make changes to your code and want to send them to the server:
+
+1.  **Push your changes to GitHub** from your computer.
+2.  **Go to your DigitalOcean Console** (the black window).
+3.  **Run these 3 commands**:
+
+    ```bash
+    # 1. Get the new code
+    git pull
+
+    # 2. Rebuild the app (This takes a few minutes)
+    docker compose up -d --build
+
+    # 3. Update the database (Just in case you changed the schema)
+    docker compose exec timeclock npx prisma migrate deploy
+    ```
+
+That's it! Your app will restart with the new version.

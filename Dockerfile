@@ -26,6 +26,10 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN npx prisma generate
 
 # Build the application
+# Build the application
+# Explicitly set max_old_space_size to prevent allocating more than available RAM
+# Using 1536MB to be safe within a 2GB (RAM+Swap) environment
+ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npm run build
 
 # Production image, copy all the files and run next

@@ -36,6 +36,22 @@ async function main() {
     }
 
     console.log('Issue Statuses seeded successfully')
+
+    // Create Default Admin User
+    const adminRole = await prisma.role.findUnique({ where: { name: 'Admin' } })
+    if (adminRole) {
+        await prisma.firefighter.upsert({
+            where: { pin: '0000' }, // Default Admin PIN
+            update: {},
+            create: {
+                name: 'System Admin',
+                pin: '0000',
+                roleId: adminRole.id,
+                isActive: true,
+            },
+        })
+        console.log('Default Admin user seeded (PIN: 0000)')
+    }
 }
 
 main()
