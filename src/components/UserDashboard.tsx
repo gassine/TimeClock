@@ -713,12 +713,12 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                         {editingIssue?.id === issue.id ? (
                                             <div className="space-y-3">
                                                 <input
-                                                    value={editingIssue.title}
+                                                    value={editingIssue?.title || ''}
                                                     onChange={e => editingIssue && setEditingIssue({ ...editingIssue, title: e.target.value })}
                                                     className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"
                                                 />
                                                 <textarea
-                                                    value={editingIssue.description}
+                                                    value={editingIssue?.description || ''}
                                                     onChange={e => editingIssue && setEditingIssue({ ...editingIssue, description: e.target.value })}
                                                     className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white h-24"
                                                 />
@@ -776,7 +776,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                                                     {editingComment?.id === comment.id ? (
                                                                         <div className="space-y-2 mt-2">
                                                                             <input
-                                                                                value={editingComment.content}
+                                                                                value={editingComment?.content || ''}
                                                                                 onChange={e => editingComment && setEditingComment({ ...editingComment, content: e.target.value })}
                                                                                 className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white"
                                                                             />
@@ -846,11 +846,11 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                         </h2>
 
                         <form onSubmit={handleSubmitRequest} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Clock In (Date)</label>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Requested In</label>
                                     <input
-                                        type="date"
+                                        type="datetime-local"
                                         value={reqDateIn}
                                         onChange={e => setReqDateIn(e.target.value)}
                                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2"
@@ -858,56 +858,42 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Clock In (Time)</label>
+                                    <label className="block text-sm font-medium text-slate-400 mb-1">Requested Out</label>
                                     <input
-                                        type="time"
-                                        value={reqTimeIn}
-                                        onChange={e => setReqTimeIn(e.target.value)}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Clock Out (Date)</label>
-                                    <input
-                                        type="date"
+                                        type="datetime-local"
                                         value={reqDateOut}
                                         onChange={e => setReqDateOut(e.target.value)}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-slate-400 mb-1">Clock Out (Time)</label>
-                                    <input
-                                        type="time"
-                                        value={reqTimeOut}
-                                        onChange={e => setReqTimeOut(e.target.value)}
                                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm text-slate-400 mb-1">Reason for Change</label>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">Reason for Change</label>
                                 <textarea
                                     value={reqReason}
                                     onChange={e => setReqReason(e.target.value)}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 h-24"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 h-24 focus:ring-2 focus:ring-blue-500 outline-none block"
                                     placeholder="e.g. Forgot to clock out, system down..."
                                     required
                                 />
                             </div>
-
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                                {submitting ? 'Submitting...' : 'Submit Request'}
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={submitting || !reqReason}
+                                    className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors flex justify-center items-center gap-2 disabled:opacity-50"
+                                >
+                                    {submitting ? 'Submitting...' : 'Submit Request'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRequestModalOpen(false)}
+                                    className="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 py-2 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -950,13 +936,22 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                 />
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                                {submitting ? 'Submitting...' : 'Submit Report'}
-                            </button>
+                            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="w-full sm:flex-1 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    {submitting ? 'Submitting...' : 'Submit Report'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIssueModalOpen(false)}
+                                    className="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 py-2 rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>

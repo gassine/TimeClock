@@ -237,7 +237,7 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
 
                 <form className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
                     {/* Basic Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-1">Incident Type</label>
                             <select
@@ -250,7 +250,7 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                 {incidentTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
                                 <input
@@ -285,7 +285,7 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                 />
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-1">District</label>
                                 <input
@@ -347,10 +347,10 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                     <button type="button" onClick={() => removeApparatus(appIndex)} className="text-red-400 hover:text-red-300 p-2"><Trash2 className="w-4 h-4" /></button>
                                 </div>
 
-                                <div className="space-y-2 pl-4 border-l-2 border-slate-700">
-                                    <div className="flex justify-between items-center">
+                                <div className="space-y-2 sm:pl-4 sm:border-l-2 border-slate-700 mt-4 sm:mt-0 pt-4 sm:pt-0 border-t-2 sm:border-t-0">
+                                    <div className="flex justify-between items-center mb-2">
                                         <label className="text-xs text-slate-500 uppercase font-bold">Personnel</label>
-                                        <button type="button" onClick={() => addPersonnel(appIndex)} className="text-blue-400 hover:text-blue-300 text-xs font-bold flex items-center gap-1"><Plus className="w-3 h-3" /> Add Person</button>
+                                        <button type="button" onClick={() => addPersonnel(appIndex)} className="text-blue-400 hover:text-blue-300 text-xs font-bold flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"><Plus className="w-3 h-3" /> Add Person</button>
                                     </div>
                                     {app.personnel.map((p: any, pIndex: number) => {
                                         const filteredFFs = getFilteredFirefighters(searchTerms[`${appIndex}-${pIndex}`]);
@@ -415,36 +415,36 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                     )}
 
                     {/* Footer Options */}
-                    <div className="flex items-center gap-4 border-t border-slate-800 pt-6">
-                        <label className="flex items-center gap-3 cursor-pointer select-none bg-slate-800 border border-slate-700 px-4 py-3 rounded-xl hover:bg-slate-700 transition-colors flex-1">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 border-t border-slate-800 pt-6">
+                        <label className="flex items-center gap-3 cursor-pointer select-none bg-slate-800 border border-slate-700 px-4 py-3 rounded-xl hover:bg-slate-700 transition-colors w-full sm:flex-1">
                             <div className={`w-5 h-5 rounded border flex items-center justify-center ${formData.esoReportCompleted ? 'bg-green-500 border-green-500' : 'border-slate-500'}`}>
                                 {formData.esoReportCompleted && <CheckCircle className="w-3.5 h-3.5 text-white" />}
                             </div>
                             <input type="checkbox" checked={formData.esoReportCompleted} onChange={e => setFormData({ ...formData, esoReportCompleted: e.target.checked })} className="hidden" />
                             <span className="font-medium text-slate-300">ESO Report Completed</span>
                         </label>
-                        <div className="text-right text-xs text-slate-500 flex-1">
+                        <div className="text-left sm:text-right text-xs text-slate-500 w-full sm:flex-1 bg-slate-800/50 sm:bg-transparent p-3 sm:p-0 rounded-xl">
                             Reporter: <span className="text-slate-300 font-bold">{user.name}</span> <br />
                             Radio ID: <span className="font-mono">{(user as any).pin || (user as any).radioId || 'N/A'}</span>
                         </div>
                     </div>
 
-                    <div className="flex gap-4 pt-4">
+                    <div className="flex flex-col sm:flex-row gap-4 pt-4">
                         {mode === 'request' ? (
-                            <button onClick={(e) => handleFormSubmit(e)} disabled={submitting} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg hover:shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center gap-2">
+                            <button onClick={(e) => handleFormSubmit(e)} disabled={submitting} className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg hover:shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center gap-2">
                                 {submitting ? 'Sending...' : <><FileText className="w-5 h-5" /> Submit Request</>}
                             </button>
                         ) : (
                             <>
-                                <button onClick={(e) => handleFormSubmit(e, 'Draft')} disabled={submitting} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                                <button onClick={(e) => handleFormSubmit(e, 'Draft')} disabled={submitting} className="w-full sm:flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2">
                                     <Save className="w-5 h-5" /> Save as Draft
                                 </button>
-                                <button onClick={(e) => handleFormSubmit(e, 'Submitted')} disabled={submitting} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg hover:shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center gap-2">
+                                <button onClick={(e) => handleFormSubmit(e, 'Submitted')} disabled={submitting} className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg hover:shadow-blue-500/20 disabled:opacity-50 flex items-center justify-center gap-2">
                                     <CheckCircle className="w-5 h-5" /> Submit Report
                                 </button>
                             </>
                         )}
-                        <button type="button" onClick={onCancel} className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-3 rounded-xl font-bold transition-colors">
+                        <button type="button" onClick={onCancel} className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white px-8 py-3 rounded-xl font-bold transition-colors">
                             Cancel
                         </button>
                     </div>

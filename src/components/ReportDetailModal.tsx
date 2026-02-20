@@ -73,7 +73,7 @@ export default function ReportDetailModal({ report, onClose, onEdit, onStatusCha
                                 </div>
                             </section>
 
-                            <section className="grid grid-cols-2 gap-8">
+                            <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                                 <div><h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">District</h3><p className="text-lg font-medium">{report.district}</p></div>
                                 <div><h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Officer In Charge</h3><p className="text-lg font-medium">{report.officerInCharge || 'N/A'}</p></div>
                                 <div><h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">ESO Report</h3><p className="text-lg font-medium flex items-center gap-2">{report.esoReportCompleted ? <CheckCircle className="text-green-500 w-5 h-5" /> : <X className="text-slate-600 w-5 h-5" />}{report.esoReportCompleted ? 'Completed' : 'Not Completed'}</p></div>
@@ -108,22 +108,22 @@ export default function ReportDetailModal({ report, onClose, onEdit, onStatusCha
                 </div>
 
                 {!readOnly && (
-                    <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-between items-center gap-3">
-                        <div className="flex items-center gap-3">
+                    <div className="p-4 sm:p-6 border-t border-slate-800 bg-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
                             {onStatusChange && reportStatuses && (
                                 <select
                                     value={report.statusId}
                                     onChange={(e) => onStatusChange(e.target.value)}
-                                    className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
+                                    className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-auto p-2.5"
                                 >
                                     {reportStatuses.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             )}
                         </div>
-                        <div className="flex gap-3">
-                            <button onClick={onClose} className="px-6 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Close</button>
+                        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                            <button onClick={onClose} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Close</button>
                             {onEdit && (
-                                <button onClick={onEdit} className="px-6 py-2 rounded-lg font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center gap-2">
+                                <button onClick={onEdit} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center justify-center gap-2">
                                     <Edit2 className="w-4 h-4" /> {isAuthor ? 'Request Changes' : 'Edit Report'}
                                 </button>
                             )}

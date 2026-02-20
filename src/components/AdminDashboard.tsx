@@ -1062,7 +1062,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         </button>
                                     )}
                                 </div>
-                                <form onSubmit={editingFirefighter ? handleUpdateFirefighter : handleAddFirefighter} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <form onSubmit={editingFirefighter ? handleUpdateFirefighter : handleAddFirefighter} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <input
                                         placeholder="Full Name"
                                         value={editingFirefighter ? editingFirefighter.name : newFirefighter.name}
@@ -1070,7 +1070,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                             ? setEditingFirefighter({ ...editingFirefighter, name: e.target.value })
                                             : setNewFirefighter({ ...newFirefighter, name: e.target.value })
                                         }
-                                        className="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                         required
                                     />
                                     <input
@@ -1080,7 +1080,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                             ? setEditingFirefighter({ ...editingFirefighter, pin: e.target.value })
                                             : setNewFirefighter({ ...newFirefighter, pin: e.target.value })
                                         }
-                                        className="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                         required
                                     />
                                     {editingFirefighter && (
@@ -1089,7 +1089,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                             placeholder="New Password (Optional)"
                                             value={editingPassword}
                                             onChange={(e) => setEditingPassword(e.target.value)}
-                                            className="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                         />
                                     )}
                                     {editingFirefighter && (
@@ -1107,7 +1107,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                             ? setEditingFirefighter({ ...editingFirefighter, roleId: e.target.value })
                                             : setNewFirefighter({ ...newFirefighter, roleId: e.target.value })
                                         }
-                                        className="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                         required
                                     >
                                         <option value="">Select Role</option>
@@ -1124,7 +1124,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         <option value="">Select Station (Optional)</option>
                                         {sortedStations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
-                                    <button type="submit" disabled={loading} className="md:col-span-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    <button type="submit" disabled={loading} className="w-full sm:col-span-2 lg:col-span-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
                                         {loading ? <RefreshCw className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
                                         {editingFirefighter ? 'Update Personnel' : 'Save Personnel'}
                                     </button>
@@ -1455,37 +1455,40 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         ))}
                                     </div>
 
-                                    {/* Firefighter Filter */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-400 mb-1">Employee</label>
-                                        <select
-                                            value={filterFirefighterId}
-                                            onChange={(e) => setFilterFirefighterId(e.target.value)}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                        >
-                                            <option value="">All Employees</option>
-                                            {sortedFirefighters.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                        </select>
-                                    </div>
+                                    {/* Firefighter Filter and Dates Container */}
+                                    <div className="col-span-1 md:col-span-2 lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {/* Firefighter Filter */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-400 mb-1">Employee</label>
+                                            <select
+                                                value={filterFirefighterId}
+                                                onChange={(e) => setFilterFirefighterId(e.target.value)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                            >
+                                                <option value="">All Employees</option>
+                                                {sortedFirefighters.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                            </select>
+                                        </div>
 
-                                    {/* Custom Date Range */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-400 mb-1">Start Date</label>
-                                        <input
-                                            type="date"
-                                            value={dateRange.start ? dateRange.start.split('T')[0] : ''}
-                                            onChange={(e) => setDateRange({ ...dateRange, start: new Date(e.target.value).toISOString(), label: 'Custom' })}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-400 mb-1">End Date</label>
-                                        <input
-                                            type="date"
-                                            value={dateRange.end ? dateRange.end.split('T')[0] : ''}
-                                            onChange={(e) => setDateRange({ ...dateRange, end: new Date(e.target.value).toISOString(), label: 'Custom' })}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                        />
+                                        {/* Custom Date Range */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-400 mb-1">Start Date</label>
+                                            <input
+                                                type="date"
+                                                value={dateRange.start ? dateRange.start.split('T')[0] : ''}
+                                                onChange={(e) => setDateRange({ ...dateRange, start: new Date(e.target.value).toISOString(), label: 'Custom' })}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-400 mb-1">End Date</label>
+                                            <input
+                                                type="date"
+                                                value={dateRange.end ? dateRange.end.split('T')[0] : ''}
+                                                onChange={(e) => setDateRange({ ...dateRange, end: new Date(e.target.value).toISOString(), label: 'Custom' })}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
