@@ -43,6 +43,16 @@ Copy and paste these commands one by one into that black window.
     ```
     *(If a pink screen pops up asking about restarting services, just press **Enter**)*
 
+    **Crucial Step for $6 Droplets (Swap Memory):**
+    *Since the $6 droplet only has 1GB RAM, the build might get stuck. Run these commands to add "fake RAM" (swap):*
+    ```bash
+    fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
+    ```
+
 2.  **Install Docker** (The engine that runs the app):
     ```bash
     curl -fsSL https://get.docker.com | sh
