@@ -116,14 +116,27 @@ docker compose up -d
 ```
 
 
-### Troubleshooting: "Table does not exist" Error
-If you see an error like `The table main.IssueStatus does not exist`, it means the database is empty. Run the migration command to create the tables:
+### Troubleshooting: "Table does not exist" or Weird Errors?
+If you get stuck in a weird state (like "Table does not exist" even after migrating), the best fix is to **reset the database**.
+
+**WARNING: This deletes all data.** (Since this is a new deploy, that's fine!)
 
 ```bash
-docker compose exec timeclock npx prisma migrate deploy
-```
+# 1. Stop the app
+docker compose down
 
-Then try seeding again.
+# 2. Delete the bad database
+rm -rf db/prod.db*
+
+# 3. Start fresh
+docker compose up -d
+
+# 4. Create Tables
+docker compose exec timeclock npx prisma migrate deploy
+
+# 5. Seed Data
+docker compose exec timeclock npx prisma db seed
+```
 
 ### Run the Seed Command (Create Admin User)
 
