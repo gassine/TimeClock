@@ -99,6 +99,24 @@ Now that you are inside the `time-clock` folder on the server:
 
 ## Part 6: Initialize Data (Crucial Step)
 
+If you see an error saying **"unable to open database file"**, run these fix commands first:
+
+```bash
+# 1. Stop the app to release the file lock
+docker compose down
+
+# 2. Fix permissions on the database folder
+# (Everything inside docker runs as user 1001)
+mkdir -p db
+chown -R 1001:1001 db
+chmod 775 db
+
+# 3. Start it back up
+docker compose up -d
+```
+
+### Run the Seed Command (Create Admin User)
+
 Before you can log in, you need to create the default Admin user.
 Run this command in the console:
 
