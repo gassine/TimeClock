@@ -117,7 +117,13 @@ docker compose up -d
 
 
 ### Troubleshooting: "Table does not exist" or Weird Errors?
-If you get stuck in a weird state (like "Table does not exist" even after migrating), the best fix is to **reset the database**.
+If you get stuck in a weird state (like "Table does not exist" even after migrating), it usually means **your server doesn't have the latest migration files**.
+
+**Did you push the new files?**
+1.  On your computer: `git add .`, `git commit -m "fix migration"`, `git push`.
+2.  On server: `git pull`.
+
+If you are sure you have the files, the best fix is to **reset the database**.
 
 **WARNING: This deletes all data.** (Since this is a new deploy, that's fine!)
 
