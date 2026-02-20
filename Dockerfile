@@ -74,4 +74,4 @@ ENV PORT 3000
 # set servername to 0.0.0.0 to avoid connection refused in docker
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
