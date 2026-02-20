@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck } from 'lucide-react';
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
+import UserTruckChecks from './UserTruckChecks';
 import { format } from 'date-fns';
 
 type UserDashboardProps = {
@@ -41,7 +42,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
     const [editingIssue, setEditingIssue] = useState<{ id: string, title: string, description: string } | null>(null);
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports'>('timesheet');
+    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks'>('timesheet');
 
     // Field Reports State
     const [drafts, setDrafts] = useState<any[]>([]);
@@ -473,6 +474,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                             {drafts.length}
                         </span>
                     )}
+                </button>
+                <button
+                    onClick={() => setActiveTab('truck-checks')}
+                    className={`pb-3 px-2 font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'truck-checks' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}`}
+                >
+                    <Truck className="w-5 h-5 text-blue-400" />
+                    Truck Checks
                 </button>
             </div>
 
@@ -954,6 +962,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                             </div>
                         </form>
                     </div>
+                </div>
+            )}
+
+            {/* TRUCK CHECKS TAB */}
+            {activeTab === 'truck-checks' && (
+                <div className="animate-in fade-in duration-300">
+                    <UserTruckChecks user={user} />
                 </div>
             )}
         </div>

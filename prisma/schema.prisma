@@ -28,6 +28,10 @@ model Firefighter {
   fieldReportComments FieldReportComment[]
   fieldReportRequests FieldReportModRequest[]
   fieldReportAssignments FieldReportApparatusPersonnel[]
+
+  // Truck Checks Relations
+  truckCheckReportItems TruckCheckReportItem[]
+  truckCheckRequests    TruckCheckRequest[]
 }
 
 model AuditLog {
@@ -76,6 +80,9 @@ model Apparatus {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   fieldReportApparatus FieldReportApparatus[]
+  truckCheckTemplates  TruckCheckTemplate[]
+  truckCheckReports    TruckCheckReport[]
+  truckCheckLocations  ApparatusLocation[]
 }
 
 model Role {
@@ -245,4 +252,89 @@ model FieldReportAuditLog {
   actorId   String      // User ID or "SYSTEM"
   details   String?
   createdAt DateTime    @default(now())
+}
+
+// --- TRUCK CHECKS SYSTEM ---
+
+model ApparatusLocation {
+  id          String                   @id @default(uuid())
+  apparatusId String
+  apparatus   Apparatus                @relation(fields: [apparatusId], references: [id], onDelete: Cascade)
+  name        String
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  templateItems TruckCheckItemTemplate[]
+}
+
+model TruckCheckTemplate {
+  id          String                   @id @default(uuid())
+  apparatusId String
+  apparatus   Apparatus                @relation(fields: [apparatusId], references: [id], onDelete: Cascade)
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  
+  items       TruckCheckItemTemplate[]
+  reports     TruckCheckReport[]
+}
+
+model TruckCheckItemTemplate {
+  id             String             @id @default(uuid())
+  templateId     String
+  template       TruckCheckTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  itemName       String
+  itemDescription String?
+  adminPhotoUrl  String?
+  order          Int                @default(0)
+  locationId     String?
+  location       ApparatusLocation? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  reportItems    TruckCheckReportItem[]
+}
+
+model TruckCheckReport {
+  id          String             @id @default(uuid())
+  templateId  String
+  template    TruckCheckTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  apparatusId String
+  apparatus   Apparatus          @relation(fields: [apparatusId], references: [id], onDelete: Cascade)
+  reportDate  DateTime           @default(now())
+  status      String             @default("Open") // Open | Closed
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  items       TruckCheckReportItem[]
+  requests    TruckCheckRequest[]
+}
+
+model TruckCheckReportItem {
+  id                 String                 @id @default(uuid())
+  reportId           String
+  report             TruckCheckReport       @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  templateItemId     String
+  templateItem       TruckCheckItemTemplate @relation(fields: [templateItemId], references: [id], onDelete: Cascade)
+  status             String                 @default("NA") // YES | NO | NA
+  comments           String?
+  completedByRadioId String?                // The PIN/Radio ID of the user
+  completedByUserId  String?                // Relation to the Firefighter
+  completedByUser    Firefighter?           @relation(fields: [completedByUserId], references: [id], onDelete: SetNull)
+  completedAt        DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+}
+
+model TruckCheckRequest {
+  id          String           @id @default(uuid())
+  reportId    String
+  report      TruckCheckReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  
+  requestedByUserId  String
+  requestedByUser    Firefighter @relation(fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  
+  status      String           @default("PENDING") // PENDING | APPROVED | DENIED
+  adminNotes  String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }

@@ -36,11 +36,20 @@ export default async function AdminPage() {
         prisma.station.findMany({ orderBy: { name: 'asc' } }),
     ]);
 
+    const safeFirefighters = firefighters.map(f => ({
+        ...f,
+        createdAt: f.createdAt.toISOString(),
+        role: { ...f.role, createdAt: f.role.createdAt.toISOString() },
+        station: f.station ? { ...f.station, createdAt: f.station.createdAt.toISOString() } : null
+    }));
+    const safeRoles = roles.map(r => ({ ...r, createdAt: r.createdAt.toISOString() }));
+    const safeStations = stations.map(s => ({ ...s, createdAt: s.createdAt.toISOString() }));
+
     return (
         <AdminDashboard
-            initialFirefighters={firefighters}
-            initialRoles={roles}
-            initialStations={stations}
+            initialFirefighters={safeFirefighters as any}
+            initialRoles={safeRoles as any}
+            initialStations={safeStations as any}
             currentUser={user}
         />
     );

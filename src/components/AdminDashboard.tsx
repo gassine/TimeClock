@@ -5,6 +5,7 @@ import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, Aler
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import RequestDetailModal from './RequestDetailModal';
+import AdminTruckChecks from './AdminTruckChecks';
 import { format } from 'date-fns';
 import LogsTable from './LogsTable';
 
@@ -86,7 +87,7 @@ type AdminDashboardProps = {
 };
 
 export default function AdminDashboard({ initialFirefighters, initialRoles, initialStations, currentUser }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports'>('firefighters');
+    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks'>('firefighters');
 
     // Data States
     const [firefighters, setFirefighters] = useState<Firefighter[]>(initialFirefighters);
@@ -1014,6 +1015,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             { id: 'requests', label: 'Requests', icon: FileText },
                             { id: 'issues', label: 'Issues', icon: AlertTriangle },
                             { id: 'field-reports', label: 'Field Reports', icon: ClipboardList },
+                            { id: 'truck-checks', label: 'Truck Checks', icon: Truck, badge: requests.length > 0 ? requests.length : null },
                             { id: 'logs', label: 'Audit Logs', icon: List },
                         ].map((tab) => (
                             <button
@@ -1026,6 +1028,11 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             >
                                 <tab.icon className="w-4 h-4" />
                                 {tab.label}
+                                {tab.badge ? (
+                                    <span className="ml-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                        {tab.badge}
+                                    </span>
+                                ) : null}
                             </button>
                         ))}
                     </nav>
@@ -2159,6 +2166,10 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                 </button>
                             </div>
                         </div>
+                    )}
+                    {/* TRUCK CHECKS TAB */}
+                    {activeTab === 'truck-checks' && (
+                        <AdminTruckChecks currentUser={currentUser} />
                     )}
                 </div>
             </div>

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
                 report: {
                     include: { incidentType: true }
                 },
-                requestedByUser: { select: { name: true, radioId: true } }
+                requestedByUser: { select: { name: true, pin: true } }
             },
             orderBy: { createdAt: 'desc' }
         });

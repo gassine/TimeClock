@@ -1,0 +1,98 @@
+[
+  {
+    "id": "cc5f047f-29cf-46b2-88cf-113f96f6b4e4",
+    "templateId": "6e4ec61f-e8bd-46c7-97b2-e5bb72219a79",
+    "apparatusId": "cmlpqohea0009vga8yae2agbr",
+    "reportDate": "2026-02-20T16:00:44.870Z",
+    "status": "Open",
+    "createdAt": "2026-02-20T16:00:44.870Z",
+    "updatedAt": "2026-02-20T16:00:44.870Z",
+    "apparatus": {
+      "id": "cmlpqohea0009vga8yae2agbr",
+      "name": "Engine 9",
+      "stationId": "cmlk49djz0000vgj4iblxnuiu",
+      "status": "In Service",
+      "createdAt": "2026-02-16T22:21:45.875Z",
+      "updatedAt": "2026-02-16T22:21:45.875Z"
+    },
+    "items": [],
+    "template": {
+      "id": "6e4ec61f-e8bd-46c7-97b2-e5bb72219a79",
+      "apparatusId": "cmlpqohea0009vga8yae2agbr",
+      "createdAt": "2026-02-20T15:50:09.069Z",
+      "updatedAt": "2026-02-20T15:50:09.069Z"
+    }
+  },
+  {
+    "id": "673d6a6f-0ebd-48fb-9a62-791dfe1ad169",
+    "templateId": "6e4ec61f-e8bd-46c7-97b2-e5bb72219a79",
+    "apparatusId": "cmlpqohea0009vga8yae2agbr",
+    "reportDate": "2026-02-20T15:51:09.772Z",
+    "status": "Open",
+    "createdAt": "2026-02-20T15:51:09.772Z",
+    "updatedAt": "2026-02-20T15:51:09.772Z",
+    "apparatus": {
+      "id": "cmlpqohea0009vga8yae2agbr",
+      "name": "Engine 9",
+      "stationId": "cmlk49djz0000vgj4iblxnuiu",
+      "status": "In Service",
+      "createdAt": "2026-02-16T22:21:45.875Z",
+      "updatedAt": "2026-02-16T22:21:45.875Z"
+    },
+    "items": [],
+    "template": {
+      "id": "6e4ec61f-e8bd-46c7-97b2-e5bb72219a79",
+      "apparatusId": "cmlpqohea0009vga8yae2agbr",
+      "createdAt": "2026-02-20T15:50:09.069Z",
+      "updatedAt": "2026-02-20T15:50:09.069Z"
+    }
+  },
+  {
+    "id": "7a6df35d-b090-45d7-bd91-6a908005f54c",
+    "templateId": "f7af4bbc-c6d0-4849-adf2-f67027a4633d",
+    "apparatusId": "cmlpqomhg000dvga83vl8frwq",
+    "reportDate": "2026-02-20T15:45:00.606Z",
+    "status": "Open",
+    "createdAt": "2026-02-20T15:45:00.606Z",
+    "updatedAt": "2026-02-20T15:45:00.606Z",
+    "apparatus": {
+      "id": "cmlpqomhg000dvga83vl8frwq",
+      "name": "Brush 9",
+      "stationId": "cmlk49djz0000vgj4iblxnuiu",
+      "status": "In Service",
+      "createdAt": "2026-02-16T22:21:52.468Z",
+      "updatedAt": "2026-02-16T22:21:52.468Z"
+    },
+    "items": [],
+    "template": {
+      "id": "f7af4bbc-c6d0-4849-adf2-f67027a4633d",
+      "apparatusId": "cmlpqomhg000dvga83vl8frwq",
+      "createdAt": "2026-02-20T15:03:47.361Z",
+      "updatedAt": "2026-02-20T15:03:47.361Z"
+    }
+  },
+  {
+    "id": "ae31be87-b0ed-4229-9964-4a6dce3eaa55",
+    "templateId": "f7af4bbc-c6d0-4849-adf2-f67027a4633d",
+    "apparatusId": "cmlpqomhg000dvga83vl8frwq",
+    "reportDate": "2026-02-20T15:44:14.012Z",
+    "status": "Open",
+    "createdAt": "2026-02-20T15:44:14.012Z",
+    "updatedAt": "2026-02-20T15:44:14.012Z",
+    "apparatus": {
+      "id": "cmlpqomhg000dvga83vl8frwq",
+      "name": "Brush 9",
+      "stationId": "cmlk49djz0000vgj4iblxnuiu",
+      "status": "In Service",
+      "createdAt": "2026-02-16T22:21:52.468Z",
+      "updatedAt": "2026-02-16T22:21:52.468Z"
+    },
+    "items": [],
+    "template": {
+      "id": "f7af4bbc-c6d0-4849-adf2-f67027a4633d",
+      "apparatusId": "cmlpqomhg000dvga83vl8frwq",
+      "createdAt": "2026-02-20T15:03:47.361Z",
+      "updatedAt": "2026-02-20T15:03:47.361Z"
+    }
+  }
+]
