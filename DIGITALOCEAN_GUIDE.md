@@ -148,4 +148,6 @@ When you make changes to your code and want to send them to the server:
     docker compose exec timeclock npx prisma migrate deploy
     ```
 
+    **NOTE**: This is **SAFE**. It does NOT wipe your data. It only applies new changes (like adding a new column). Your data is safe in the `db/` folder on the server.
+
 That's it! Your app will restart with the new version.
