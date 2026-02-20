@@ -53,7 +53,7 @@ sudo apt install docker-compose-plugin -y
 4.  **Initialize the Database**:
     Run the migrations to set up the database schema in the production volume:
     ```bash
-    docker compose exec timeclock npx -y prisma@6 migrate deploy
+    docker compose exec timeclock npx prisma migrate deploy
     ```
 
 ## Step 3: Verify
@@ -112,7 +112,7 @@ To serve the app on port 80/443 with HTTPS, use Nginx.
     ```bash
     git pull
     docker compose up -d --build
-    docker compose exec timeclock npx -y prisma@6 migrate deploy
+    docker compose exec timeclock npx prisma migrate deploy
     ```
 
 ## Windows Server / VM Deployment
@@ -130,7 +130,7 @@ You have two main options for deploying on Windows: **Docker Desktop** (Recommen
     ```
 4.  **Initialize DB**:
     ```powershell
-    docker compose exec timeclock npx -y prisma@6 migrate deploy
+    docker compose exec timeclock npx prisma migrate deploy
     ```
 5.  **Access**: Open `http://localhost:3000` or `http://YOUR_VM_IP:3000`.
 
@@ -152,7 +152,7 @@ You have two main options for deploying on Windows: **Docker Desktop** (Recommen
 3.  **Initialize Database**:
     ```powershell
     # This creates the SQLite file in /prisma/dev.db by default
-    npx -y prisma@6 migrate deploy
+    npx prisma migrate deploy
     ```
 
 4.  **Run the App**:

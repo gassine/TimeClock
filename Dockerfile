@@ -59,6 +59,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
+# Install Prisma and tsx globally to ensure they are available for migrations/seeding
+# This prevents npx from downloading incompatible versions or failing to find tsx
+RUN npm install -g prisma@6 tsx
+
 USER nextjs
 
 EXPOSE 3000
