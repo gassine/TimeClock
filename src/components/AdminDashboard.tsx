@@ -984,11 +984,11 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100 p-8">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 overflow-x-hidden">
+            <div className="max-w-7xl mx-auto w-full whitespace-normal">
                 <div className="flex flex-col gap-6 mb-8">
-                    <header className="flex items-center justify-between">
-                        <h1 className="text-3xl font-bold flex items-center gap-3">
+                    <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3">
                             <Shield className="text-red-500" />
                             Station Administration
                         </h1>
@@ -1133,8 +1133,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
 
                             {/* Personnel List */}
-                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-                                <div className="flex justify-between items-center mb-6">
+                            <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-700">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                                     <h2 className="text-xl font-bold flex items-center gap-2"><Users className="text-purple-400" /> Personnel Roster</h2>
                                     <div className="flex items-center gap-2">
                                         <label className="text-sm text-slate-400">Show Archived</label>
@@ -1146,8 +1146,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         </button>
                                     </div>
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
+                                <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">
+                                    <table className="w-full text-left border-collapse whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
                                         <thead>
                                             <tr className="border-b border-slate-700 text-slate-400 text-sm">
                                                 <th className="pb-3 px-4">Name</th>
@@ -1433,7 +1433,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     {activeTab === 'reports' && (
                         <div className="space-y-8">
                             {/* Filters */}
-                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                            <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-700">
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FileText className="text-blue-400" /> Report Filters</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {/* Presets */}
@@ -1509,13 +1509,13 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                             <div className="bg-slate-700/50 p-4 rounded-xl border-2 border-slate-600 flex justify-between items-center shadow-lg">
                                                 <div>
                                                     <p className="font-bold text-lg text-white flex items-center gap-2"><Users className="w-5 h-5 text-blue-400" /> All Personnel</p>
-                                                    <div className="flex gap-4 text-sm text-slate-300 mt-1">
+                                                    <div className="flex gap-4 text-xs sm:text-sm text-slate-300 mt-1">
                                                         <span>{totalShifts} shifts</span>
                                                         <span className="flex items-center gap-1 text-blue-300 font-bold"><Truck className="w-3 h-3" /> {totalCalls} calls</span>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-3xl font-mono text-green-400 bg-slate-800 px-3 py-1 rounded inline-block">{hours}h {minutes}m</p>
+                                                    <p className="text-xl sm:text-3xl font-mono text-green-400 bg-slate-800 px-2 py-1 rounded inline-block whitespace-nowrap">{hours}h {minutes}m</p>
                                                 </div>
                                             </div>
                                         );
@@ -1530,14 +1530,14 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         return (
                                             <div key={id} className="bg-slate-900 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
                                                 <div>
-                                                    <p className="font-bold text-lg">{stats.name}</p>
-                                                    <div className="flex gap-4 text-sm text-slate-400">
+                                                    <p className="font-bold text-base sm:text-lg">{stats.name}</p>
+                                                    <div className="flex gap-4 text-xs sm:text-sm text-slate-400">
                                                         <span>{stats.count} shifts</span>
                                                         <span className="flex items-center gap-1 text-blue-400 font-bold"><Truck className="w-3 h-3" /> {calls} calls</span>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-2xl font-mono text-green-400">{hours}h {minutes}m</p>
+                                                <div className="text-right pl-2">
+                                                    <p className="text-lg sm:text-2xl font-mono text-green-400 whitespace-nowrap">{hours}h {minutes}m</p>
                                                 </div>
                                             </div>
                                         );
@@ -1549,10 +1549,10 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             </div>
 
                             {/* Activity Log */}
-                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                            <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-700">
                                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><FileText className="text-orange-400" /> Detailed Activity Log</h2>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
+                                <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">
+                                    <table className="w-full text-left whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
                                         <thead>
                                             <tr className="border-b border-slate-700 text-slate-400 text-sm">
                                                 <th className="pb-3 px-4">Person</th>
@@ -1654,10 +1654,10 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
                     {/* LOGS TAB */}
                     {activeTab === 'logs' && (
-                        <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                        <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-700">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><List className="text-slate-400" /> Audit Logs</h2>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
+                            <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">
+                                <table className="w-full text-left border-collapse whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
                                     <thead className="bg-slate-900/50 text-slate-400 text-sm">
                                         <tr>
                                             <th className="p-4 rounded-tl-lg">Time</th>
@@ -1926,12 +1926,12 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
                             {fieldReportTab === 'reports' && (
                                 <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                                    <div className="p-6 border-b border-slate-700 flex justify-between items-center">
+                                    <div className="p-4 sm:p-6 border-b border-slate-700 flex justify-between items-center flex-wrap gap-4">
                                         <h3 className="text-xl font-bold flex items-center gap-2"><ClipboardList className="text-blue-400" /> All Reports</h3>
                                         <button onClick={fetchFieldReports} className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"><RefreshCw className="w-4 h-4" /></button>
                                     </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left border-collapse">
+                                    <div className="overflow-x-auto w-full scrollbar-thin">
+                                        <table className="w-full text-left border-collapse whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
                                             <thead>
                                                 <tr className="bg-slate-900/50 text-slate-400 text-sm">
                                                     <th className="p-4 font-semibold">Date</th>

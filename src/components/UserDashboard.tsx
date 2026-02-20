@@ -428,8 +428,8 @@ export default function UserDashboard({ user }: UserDashboardProps) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white p-6">
-            <header className="flex justify-between items-center mb-8 border-b border-slate-700 pb-6">
+        <div className="min-h-screen bg-slate-900 text-white p-4 md:p-6 overflow-x-hidden">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-slate-700 pb-6 gap-4">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <Clock className="text-blue-400" /> My Dashboard
@@ -506,15 +506,15 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                     </div>
 
                     {/* Recent History */}
-                    <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-                        <div className="p-6 border-b border-slate-700 flex justify-between items-center">
+                    <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden w-full">
+                        <div className="p-4 md:p-6 border-b border-slate-700 flex justify-between items-center">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <Calendar className="text-purple-400" /> Recent Shifts
                             </h2>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                        <div className="overflow-x-auto w-full scrollbar-thin">
+                            <table className="w-full text-left whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
                                 <thead className="bg-slate-900/50 text-slate-400 text-sm">
                                     <tr>
                                         <th className="p-4">Date</th>
@@ -563,8 +563,8 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             {/* FIELD REPORTS TAB */}
             {activeTab === 'reports' && (
                 <div className="space-y-6 animate-in fade-in duration-300">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold flex items-center gap-2"><ClipboardList className="text-blue-400" /> Field Reports</h2>
+                    <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><ClipboardList className="text-blue-400" /> Field Reports</h2>
                         <button onClick={() => { setEditingReport(null); setIsRequestMode(false); setReportModalOpen(true); }} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 transition-all">
                             <Plus className="w-5 h-5" /> New Report
                         </button>
@@ -696,8 +696,8 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             {/* ISSUES TAB */}
             {activeTab === 'issues' && (
                 <div className="space-y-6 animate-in fade-in duration-300">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold flex items-center gap-2"><AlertCircle className="text-yellow-400" /> Safety Issues</h2>
+                    <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                        <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><AlertCircle className="text-yellow-400" /> Safety Issues</h2>
                         <button onClick={() => setIssueModalOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 transition-all">
                             <Plus className="w-5 h-5" /> Report Issue
                         </button>
