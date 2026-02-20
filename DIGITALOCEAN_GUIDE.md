@@ -115,6 +115,16 @@ chmod 775 db
 docker compose up -d
 ```
 
+
+### Troubleshooting: "Table does not exist" Error
+If you see an error like `The table main.IssueStatus does not exist`, it means the database is empty. Run the migration command to create the tables:
+
+```bash
+docker compose exec timeclock npx prisma migrate deploy
+```
+
+Then try seeding again.
+
 ### Run the Seed Command (Create Admin User)
 
 Before you can log in, you need to create the default Admin user.
