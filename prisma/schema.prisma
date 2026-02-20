@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Firefighter {
+  id          String      @id @default(cuid())
+  name        String
+  roleId      String
+  role        Role        @relation(fields: [roleId], references: [id])
+  pin         String      @unique // Radio ID, required and unique
+  stationId   String?
+  station     Station?    @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  timeEntries TimeEntry[]
+  isActive    Boolean     @default(true)
+  password    String?     // Optional hashed password for dashboard access
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  changeRequests TimeChangeRequest[]
+  auditLogs     AuditLog[]
+  reportedIssues Issue[]
+  comments      IssueComment[]
+  fieldReports      FieldReport[]
+  fieldReportComments FieldReportComment[]
+  fieldReportRequests FieldReportModRequest[]
+  fieldReportAssignments FieldReportApparatusPersonnel[]
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  action      String
+  model       String
+  modelId     String?
+  details     String?
+  adminId     String?
+  admin       Firefighter? @relation(fields: [adminId], references: [id])
+  ipAddress   String?
+  createdAt   DateTime    @default(now())
+}
+
+model TimeChangeRequest {
+  id                String    @id @default(cuid())
+  firefighterId     String
+  firefighter       Firefighter @relation(fields: [firefighterId], references: [id])
+  timeEntryId       String?   // Optional: if editing an existing entry
+  timeEntry         TimeEntry? @relation(fields: [timeEntryId], references: [id])
+  requestedClockIn  DateTime?
+  requestedClockOut DateTime?
+  reason            String?
+  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminComment      String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Station {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  address      String?
+  firefighters Firefighter[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  apparatus    Apparatus[]
+}
+
+model Apparatus {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  stationId String
+  station   Station  @relation(fields: [stationId], references: [id])
+  status    String   @default("In Service") // "In Service", "Out of Service", "Maintenance"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  fieldReportApparatus FieldReportApparatus[]
+}
+
+model Role {
+  id           String        @id @default(cuid())
+  name         String        @unique // e.g., "Firefighter", "Captain", "Admin"
+  isAdmin      Boolean       @default(false)
+  firefighters Firefighter[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model TimeEntry {
+  id            String      @id @default(cuid())
+  firefighterId String
+  firefighter   Firefighter @relation(fields: [firefighterId], references: [id], onDelete: Cascade)
+  clockIn       DateTime
+  clockOut      DateTime?
+  stationId     String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  changeRequests TimeChangeRequest[]
+}
+
+model Issue {
+  id           String      @id @default(cuid())
+  title        String
+  description  String
+  reportedById String
+  reportedBy   Firefighter @relation(fields: [reportedById], references: [id])
+  statusId     String
+  status       IssueStatus @relation(fields: [statusId], references: [id])
+  isArchived   Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  comments     IssueComment[]
+}
+
+model IssueStatus {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String   // Hex code or Tailwind class
+  order     Int      @default(0)
+  isDefault Boolean  @default(false)
+  issues    Issue[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model IssueComment {
+  id        String      @id @default(cuid())
+  content   String
+  issueId   String
+  issue     Issue       @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    Firefighter @relation(fields: [authorId], references: [id])
+  createdAt DateTime    @default(now())
+}
+
+// --- FIELD REPORTS SYSTEM ---
+
+model IncidentType {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  reports   FieldReport[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model ReportStatus {
+  id               String        @id @default(uuid())
+  name             String        @unique
+  isDraftLike      Boolean       @default(false) // If true, only visible to creator + admin
+  userCanEditOwn   Boolean       @default(false) // If true, creator can edit fully
+  isFinal          Boolean       @default(false) // If true, locked for basic edits
+  order            Int           @default(0)
+  reports          FieldReport[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model FieldReport {
+  id                 String        @id @default(uuid())
+  incidentTypeId     String
+  incidentType       IncidentType  @relation(fields: [incidentTypeId], references: [id])
+  date               DateTime
+  alarmTime          String?       // Stored as HH:MM (24h)
+  esoReportCompleted Boolean       @default(false)
+  location           String
+  district           String
+  incidentSummary    String
+  officerInCharge    String?
+  
+  statusId           String
+  status             ReportStatus  @relation(fields: [statusId], references: [id])
+  
+  createdByUserId    String
+  createdByUser      Firefighter   @relation(fields: [createdByUserId], references: [id])
+  createdByRadioId   String        // Snapshot of radio ID at time of creation
+
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  assignedApparatus  FieldReportApparatus[]
+  modificationRequests FieldReportModRequest[]
+  comments           FieldReportComment[]
+  auditLogs          FieldReportAuditLog[]
+}
+
+model FieldReportApparatus {
+  id          String        @id @default(uuid())
+  reportId    String
+  report      FieldReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  apparatusId String
+  apparatus   Apparatus     @relation(fields: [apparatusId], references: [id])
+  personnel   FieldReportApparatusPersonnel[]
+}
+
+model FieldReportApparatusPersonnel {
+  id                 String               @id @default(uuid())
+  reportApparatusId  String
+  reportApparatus    FieldReportApparatus @relation(fields: [reportApparatusId], references: [id], onDelete: Cascade)
+  firefighterId      String
+  firefighter        Firefighter?         @relation(fields: [firefighterId], references: [id])
+  firefighterRadioId String               // Snapshot
+}
+
+model FieldReportModRequest {
+  id                 String      @id @default(uuid())
+  reportId           String
+  report             FieldReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  
+  requestedByUserId  String
+  requestedByUser    Firefighter @relation(fields: [requestedByUserId], references: [id])
+  requestedByRadioId String
+  
+  requestType        String      // "add_self_to_apparatus", "add_apparatus_with_self", "general_edit"
+  reason             String?
+  
+  // For apparatus/personnel requests
+  apparatusId        String?     // If adding self to existing, or adding new apparatus
+  
+  // For general edits (JSON diff)
+  proposedChanges    String?     // JSON string
+  
+  status             String      @default("PENDING") // PENDING, APPROVED, DENIED
+  adminNotes         String?
+  
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model FieldReportComment {
+  id        String      @id @default(uuid())
+  reportId  String
+  report    FieldReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    Firefighter @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime    @default(now())
+}
+
+model FieldReportAuditLog {
+  id        String      @id @default(uuid())
+  reportId  String
+  report    FieldReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  action    String
+  actorId   String      // User ID or "SYSTEM"
+  details   String?
+  createdAt DateTime    @default(now())
+}
