@@ -1092,15 +1092,6 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                             className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                         />
                                     )}
-                                    {editingFirefighter && (
-                                        <input
-                                            type="password"
-                                            placeholder="New Password (Optional)"
-                                            value={editingPassword}
-                                            onChange={(e) => setEditingPassword(e.target.value)}
-                                            className="bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                        />
-                                    )}
                                     <select
                                         value={editingFirefighter ? editingFirefighter.roleId : newFirefighter.roleId}
                                         onChange={(e) => editingFirefighter
@@ -1146,7 +1137,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         </button>
                                     </div>
                                 </div>
-                                <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">
+                                <div className="overflow-x-auto w-full scrollbar-thin">
                                     <table className="w-full text-left border-collapse whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
                                         <thead>
                                             <tr className="border-b border-slate-700 text-slate-400 text-sm">
@@ -1435,9 +1426,9 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             {/* Filters */}
                             <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-700">
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FileText className="text-blue-400" /> Report Filters</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="flex flex-col gap-4">
                                     {/* Presets */}
-                                    <div className="flex gap-2 flex-wrap col-span-1 md:col-span-2 lg:col-span-4 mb-2">
+                                    <div className="flex gap-2 flex-wrap mb-2">
                                         {[
                                             { id: 'recent', label: 'Recent' },
                                             { id: 'week', label: 'This Week' },
@@ -1456,7 +1447,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     </div>
 
                                     {/* Firefighter Filter and Dates Container */}
-                                    <div className="col-span-1 md:col-span-2 lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {/* Firefighter Filter */}
                                         <div>
                                             <label className="block text-sm font-medium text-slate-400 mb-1">Employee</label>
@@ -1554,7 +1545,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             {/* Activity Log */}
                             <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-700">
                                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><FileText className="text-orange-400" /> Detailed Activity Log</h2>
-                                <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">
+                                <div className="overflow-x-auto w-full scrollbar-thin">
                                     <table className="w-full text-left whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
                                         <thead>
                                             <tr className="border-b border-slate-700 text-slate-400 text-sm">
@@ -1659,7 +1650,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     {activeTab === 'logs' && (
                         <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-700">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><List className="text-slate-400" /> Audit Logs</h2>
-                            <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-thin">
+                            <div className="overflow-x-auto w-full scrollbar-thin">
                                 <table className="w-full text-left border-collapse whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
                                     <thead className="bg-slate-900/50 text-slate-400 text-sm">
                                         <tr>
