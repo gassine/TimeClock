@@ -20,6 +20,7 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
     const [reportDate, setReportDate] = useState('');
     const [activeReport, setActiveReport] = useState<any | null>(null);
     const [syncStatus, setSyncStatus] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
+    const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
     const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -84,6 +85,10 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
             console.error(error);
             alert('Error starting check.');
         }
+    };
+
+    const toggleGroup = (groupName: string) => {
+        setCollapsedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
     };
 
     const openReport = async (reportProxy: any) => {
@@ -342,122 +347,139 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
                                     return acc;
                                 }, {});
 
-                                return Object.entries(grouped || {}).map(([locationName, items]: [string, any]) => (
-                                    <div key={locationName} className="mb-8 last:mb-0">
-                                        <h4 className="text-lg font-bold text-slate-300 mb-4 flex items-center gap-2 border-b border-slate-700 pb-2">
-                                            <MapPin className="w-5 h-5 text-blue-400" />
-                                            {locationName}
-                                        </h4>
-                                        <div className="space-y-4">
-                                            {items.map((item: any, idx: number) => (
-                                                <div key={item.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4 md:p-5 flex flex-col md:flex-row gap-6 relative overflow-hidden transition-all">
-                                                    {/* Sync flash effect for incoming remote changes */}
-                                                    <div className={`absolute inset-0 pointer-events-none transition-colors duration-1000 ${item.completedByUserId !== null && item.completedByUserId !== user.id && (new Date().getTime() - new Date(item.updatedAt).getTime() < 3000)
-                                                        ? 'bg-blue-500/10' : 'bg-transparent'
-                                                        }`} />
+                                return Object.entries(grouped || {}).map(([locationName, items]: [string, any]) => {
+                                    // Default to collapsed (true) if undefined
+                                    const isCollapsed = collapsedGroups[locationName] !== false;
 
-                                                    <div className="flex-1">
-                                                        <div className="flex items-start gap-3 mb-2">
-                                                            <div className="bg-slate-700 text-slate-300 w-6 h-6 rounded flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">{idx + 1}</div>
-                                                            <div>
-                                                                <h4 className="font-bold text-lg text-white">{item.templateItem?.itemName}</h4>
-                                                                {item.templateItem?.itemDescription && (
-                                                                    <p className="text-slate-400 text-sm mt-1">{item.templateItem.itemDescription}</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
+                                    return (
+                                        <div key={locationName} className="mb-4 last:mb-0">
+                                            <button
+                                                onClick={() => toggleGroup(locationName)}
+                                                className="w-full flex items-center justify-between text-left text-lg font-bold text-slate-300 bg-slate-800/50 hover:bg-slate-800 border-b border-slate-700/50 p-3 rounded-lg transition-colors"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <MapPin className="w-5 h-5 text-blue-400" />
+                                                    {locationName}
+                                                </div>
+                                                <div className="flex items-center gap-4 text-sm font-normal text-slate-500">
+                                                    <span>{items.length} Items</span>
+                                                    {isCollapsed ? <Plus className="w-5 h-5" /> : <div className="w-5 h-1 bg-slate-400 rounded-full" />}
+                                                </div>
+                                            </button>
 
-                                                        {/* Status Toggles */}
-                                                        <div className="flex flex-wrap gap-2 mt-4 ml-9">
-                                                            {['YES', 'NO', 'NA'].map(option => {
-                                                                const colors = {
-                                                                    'YES': 'data-[state=active]:bg-green-600 data-[state=active]:border-green-500',
-                                                                    'NO': 'data-[state=active]:bg-red-600 data-[state=active]:border-red-500',
-                                                                    'NA': 'data-[state=active]:bg-slate-600 data-[state=active]:border-slate-500'
-                                                                }[option];
+                                            {!isCollapsed && (
+                                                <div className="space-y-4 mt-4 animate-in slide-in-from-top-2 fade-in duration-200">
+                                                    {items.map((item: any, idx: number) => (
+                                                        <div key={item.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4 md:p-5 flex flex-col md:flex-row gap-6 relative overflow-hidden transition-all">
+                                                            {/* Sync flash effect for incoming remote changes */}
+                                                            <div className={`absolute inset-0 pointer-events-none transition-colors duration-1000 ${item.completedByUserId !== null && item.completedByUserId !== user.id && (new Date().getTime() - new Date(item.updatedAt).getTime() < 3000)
+                                                                ? 'bg-blue-500/10' : 'bg-transparent'
+                                                                }`} />
 
-                                                                return (
-                                                                    <button
-                                                                        key={option}
-                                                                        disabled={activeReport.status !== 'Open'}
-                                                                        data-state={item.status === option ? 'active' : 'inactive'}
-                                                                        onClick={() => handleItemUpdate(item.id, { status: option })}
-                                                                        className={`px-4 py-2 rounded font-bold text-sm border-2 transition-all 
+                                                            <div className="flex-1">
+                                                                <div className="flex items-start gap-3 mb-2">
+                                                                    <div className="bg-slate-700 text-slate-300 w-6 h-6 rounded flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">{idx + 1}</div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-lg text-white">{item.templateItem?.itemName}</h4>
+                                                                        {item.templateItem?.itemDescription && (
+                                                                            <p className="text-slate-400 text-sm mt-1">{item.templateItem.itemDescription}</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Status Toggles */}
+                                                                <div className="flex flex-wrap gap-2 mt-4 ml-9">
+                                                                    {['YES', 'NO', 'NA'].map(option => {
+                                                                        const colors = {
+                                                                            'YES': 'data-[state=active]:bg-green-600 data-[state=active]:border-green-500',
+                                                                            'NO': 'data-[state=active]:bg-red-600 data-[state=active]:border-red-500',
+                                                                            'NA': 'data-[state=active]:bg-slate-600 data-[state=active]:border-slate-500'
+                                                                        }[option];
+
+                                                                        return (
+                                                                            <button
+                                                                                key={option}
+                                                                                disabled={activeReport.status !== 'Open'}
+                                                                                data-state={item.status === option ? 'active' : 'inactive'}
+                                                                                onClick={() => handleItemUpdate(item.id, { status: option })}
+                                                                                className={`px-4 py-2 rounded font-bold text-sm border-2 transition-all 
                                                                             disabled:opacity-50 disabled:cursor-not-allowed
                                                                             data-[state=inactive]:bg-slate-900/50 data-[state=inactive]:border-slate-700 data-[state=inactive]:text-slate-400 data-[state=inactive]:hover:border-slate-500
                                                                             data-[state=active]:text-white shadow-lg ${colors}`}
-                                                                    >
-                                                                        {option}
-                                                                    </button>
-                                                                )
-                                                            })}
-                                                        </div>
-
-                                                        <div className="mt-4 ml-9">
-                                                            <input
-                                                                type="text"
-                                                                disabled={activeReport.status !== 'Open'}
-                                                                value={item.comments || ''}
-                                                                onChange={(e) => {
-                                                                    // Optimistic local update only on typing to prevent jank
-                                                                    setActiveReport((prev: any) => ({
-                                                                        ...prev,
-                                                                        items: prev.items.map((it: any) =>
-                                                                            it.id === item.id ? { ...it, comments: e.target.value } : it
+                                                                            >
+                                                                                {option}
+                                                                            </button>
                                                                         )
-                                                                    }));
-                                                                }}
-                                                                onBlur={(e) => handleItemUpdate(item.id, { comments: e.target.value })}
-                                                                placeholder="Add notes..."
-                                                                className="w-full bg-slate-900/50 border border-slate-700 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none text-slate-300 disabled:opacity-50"
-                                                            />
-                                                        </div>
-                                                    </div>
+                                                                    })}
+                                                                </div>
 
-                                                    {/* Meta & Photo side */}
-                                                    <div className="md:w-64 shrink-0 flex flex-col justify-between border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-6">
-                                                        <div className="text-xs text-slate-500 space-y-1 mb-4 md:mb-0">
-                                                            {item.completedByUser ? (
-                                                                <>
-                                                                    <div className="flex items-center gap-1.5 font-medium text-slate-300">
-                                                                        <CheckCircle className="w-3 h-3 text-green-400" />
-                                                                        Marked by {item.completedByUser.name}
-                                                                    </div>
-                                                                    {item.completedAt && (
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            <Clock className="w-3 h-3" />
-                                                                            {format(new Date(item.completedAt), 'hh:mm:ss a')}
-                                                                        </div>
-                                                                    )}
-                                                                </>
-                                                            ) : (
-                                                                <div className="italic">Not checked yet</div>
-                                                            )}
-                                                        </div>
-
-                                                        {item.templateItem?.adminPhotoUrl && (
-                                                            <div className="mt-2 text-center">
-                                                                <a
-                                                                    href={item.templateItem.adminPhotoUrl}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="block w-full overflow-hidden rounded bg-black/20 border border-slate-700 hover:border-blue-500 transition-colors"
-                                                                >
-                                                                    <img
-                                                                        src={item.templateItem.adminPhotoUrl}
-                                                                        alt="Reference"
-                                                                        className="max-h-24 w-full object-contain mx-auto"
+                                                                <div className="mt-4 ml-9">
+                                                                    <input
+                                                                        type="text"
+                                                                        disabled={activeReport.status !== 'Open'}
+                                                                        value={item.comments || ''}
+                                                                        onChange={(e) => {
+                                                                            // Optimistic local update only on typing to prevent jank
+                                                                            setActiveReport((prev: any) => ({
+                                                                                ...prev,
+                                                                                items: prev.items.map((it: any) =>
+                                                                                    it.id === item.id ? { ...it, comments: e.target.value } : it
+                                                                                )
+                                                                            }));
+                                                                        }}
+                                                                        onBlur={(e) => handleItemUpdate(item.id, { comments: e.target.value })}
+                                                                        placeholder="Add notes..."
+                                                                        className="w-full bg-slate-900/50 border border-slate-700 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none text-slate-300 disabled:opacity-50"
                                                                     />
-                                                                </a>
-                                                                <span className="text-[10px] text-slate-500 mt-1 block uppercase tracking-wider font-bold">Ref Photo</span>
+                                                                </div>
                                                             </div>
-                                                        )}
-                                                    </div>
+
+                                                            {/* Meta & Photo side */}
+                                                            <div className="md:w-64 shrink-0 flex flex-col justify-between border-t md:border-t-0 md:border-l border-slate-700 pt-4 md:pt-0 md:pl-6">
+                                                                <div className="text-xs text-slate-500 space-y-1 mb-4 md:mb-0">
+                                                                    {item.completedByUser ? (
+                                                                        <>
+                                                                            <div className="flex items-center gap-1.5 font-medium text-slate-300">
+                                                                                <CheckCircle className="w-3 h-3 text-green-400" />
+                                                                                Marked by {item.completedByUser.name}
+                                                                            </div>
+                                                                            {item.completedAt && (
+                                                                                <div className="flex items-center gap-1.5">
+                                                                                    <Clock className="w-3 h-3" />
+                                                                                    {format(new Date(item.completedAt), 'hh:mm:ss a')}
+                                                                                </div>
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
+                                                                        <div className="italic">Not checked yet</div>
+                                                                    )}
+                                                                </div>
+
+                                                                {item.templateItem?.adminPhotoUrl && (
+                                                                    <div className="mt-2 text-center">
+                                                                        <a
+                                                                            href={item.templateItem.adminPhotoUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="block w-full overflow-hidden rounded bg-black/20 border border-slate-700 hover:border-blue-500 transition-colors"
+                                                                        >
+                                                                            <img
+                                                                                src={item.templateItem.adminPhotoUrl}
+                                                                                alt="Reference"
+                                                                                className="max-h-24 w-full object-contain mx-auto"
+                                                                            />
+                                                                        </a>
+                                                                        <span className="text-[10px] text-slate-500 mt-1 block uppercase tracking-wider font-bold">Ref Photo</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
-                                    </div>
-                                ));
+                                    );
+                                });
                             })()}
                         </div>
                     </div>

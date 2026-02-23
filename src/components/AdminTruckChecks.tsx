@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, CheckCircle, Clock, AlertTriangle, MessageSquare, Truck, Check, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, Clock, AlertTriangle, MessageSquare, Truck, Check, X, Eye, MapPin, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 
 type UserContext = {
@@ -11,6 +11,7 @@ type UserContext = {
 
 export default function AdminTruckChecks({ currentUser }: { currentUser: UserContext }) {
     const [subTab, setSubTab] = useState<'templates' | 'reports'>('reports');
+    const [showArchived, setShowArchived] = useState(false);
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
 
@@ -27,10 +28,72 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
     const [newLocationName, setNewLocationName] = useState('');
     const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(null);
 
+    // Report Viewer State
+    const [viewingReport, setViewingReport] = useState<any | null>(null);
+
+    const handleViewReport = async (reportId: string) => {
+        try {
+            const res = await fetch(`/api/truck-checks/reports/${reportId}`);
+            if (res.ok) {
+                setViewingReport(await res.json());
+            } else {
+                alert('Failed to load full report details.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error fetching report details.');
+        }
+    };
+
+    const handleStatusChange = async (reportId: string, newStatus: string) => {
+        try {
+            const res = await fetch(`/api/truck-checks/reports/${reportId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (res.ok) {
+                // Update local state
+                setReports(reports.map(r => r.id === reportId ? { ...r, status: newStatus } : r));
+                if (viewingReport && viewingReport.id === reportId) {
+                    setViewingReport({ ...viewingReport, status: newStatus });
+                }
+            } else {
+                alert('Failed to update report status.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error updating status.');
+        }
+    };
+
+    const handleDeleteReport = async (reportId: string) => {
+        if (!confirm('WARNING: Are you sure you want to completely DELETE this truck check report? This action cannot be undone and will permanently remove all associated checklist items and data.')) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/truck-checks/reports/${reportId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                setReports(reports.filter(r => r.id !== reportId));
+                if (viewingReport && viewingReport.id === reportId) {
+                    setViewingReport(null);
+                }
+            } else {
+                alert('Failed to delete report.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Error deleting report.');
+        }
+    };
+
     useEffect(() => {
         fetchData();
         fetchApparatus();
-    }, [subTab]);
+    }, [subTab, showArchived]);
 
     useEffect(() => {
         if (selectedApparatusId) {
@@ -49,7 +112,7 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
         setLoading(true);
         try {
             if (subTab === 'templates') {
-                const res = await fetch('/api/truck-checks/templates');
+                const res = await fetch(`/api/truck-checks/templates?archived=${showArchived}`);
                 const data = await res.json();
                 setTemplates(data || []);
             } else if (subTab === 'reports') {
@@ -99,6 +162,50 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
             setEditingTemplate(null);
             setBuilderItems([]);
             setSelectedApparatusId('');
+            fetchData();
+        } catch (error: any) {
+            setMessage(error.message);
+        }
+    };
+
+    const handleDeleteTemplate = async () => {
+        if (!editingTemplate) return;
+        if (!confirm('WARNING: Are you sure you want to archive this template? Past reports using this template will be preserved, but new reports cannot be generated from it.')) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/truck-checks/templates/${editingTemplate.id}`, {
+                method: 'DELETE'
+            });
+
+            if (!res.ok) {
+                const e = await res.json();
+                throw new Error(e.error || 'Failed to delete template');
+            }
+
+            setMessage('Template archived successfully.');
+            setEditingTemplate(null);
+            setBuilderItems([]);
+            setSelectedApparatusId('');
+            fetchData();
+        } catch (error: any) {
+            setMessage(error.message);
+        }
+    };
+
+    const handleReactivateTemplate = async (templateId: string) => {
+        try {
+            const res = await fetch(`/api/truck-checks/templates/${templateId}/reactivate`, {
+                method: 'PATCH'
+            });
+
+            if (!res.ok) {
+                const e = await res.json();
+                throw new Error(e.error || 'Failed to reactivate template');
+            }
+
+            setMessage('Template reactivated successfully.');
             fetchData();
         } catch (error: any) {
             setMessage(error.message);
@@ -193,26 +300,55 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-1 space-y-4">
                         <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
-                            <h3 className="font-bold text-lg mb-4">Saved Templates</h3>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold text-lg">{showArchived ? 'Archived Templates' : 'Saved Templates'}</h3>
+                                <button
+                                    onClick={() => {
+                                        setShowArchived(!showArchived);
+                                        setEditingTemplate(null);
+                                        setBuilderItems([]);
+                                        setSelectedApparatusId('');
+                                    }}
+                                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                    {showArchived ? 'View Active' : 'View Archived'}
+                                </button>
+                            </div>
                             <div className="space-y-3">
                                 {templates.map(t => (
-                                    <div key={t.id} className="p-3 bg-slate-700/50 border border-slate-600 rounded-lg flex justify-between items-center group">
+                                    <div
+                                        key={t.id}
+                                        onClick={() => {
+                                            if (showArchived) return; // Don't edit archived templates
+                                            setEditingTemplate(t);
+                                            setBuilderItems(t.items || []);
+                                            setSelectedApparatusId(t.apparatusId);
+                                        }}
+                                        className={`p-3 bg-slate-700/50 hover:bg-slate-600 border border-slate-600 rounded-lg flex justify-between items-center group transition-colors ${!showArchived ? 'cursor-pointer' : ''}`}
+                                    >
                                         <div>
                                             <p className="font-medium text-slate-200">{t.apparatus?.name || 'Unknown Apparatus'}</p>
                                             <p className="text-sm text-slate-400">{t.items?.length || 0} items</p>
                                         </div>
-                                        <button
-                                            onClick={() => {
-                                                setEditingTemplate(t);
-                                                setBuilderItems(t.items || []);
-                                                setSelectedApparatusId(t.apparatusId);
-                                            }}
-                                            className="p-2 text-slate-400 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            <Edit2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="p-2 transition-colors">
+                                            {showArchived ? (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleReactivateTemplate(t.id); }}
+                                                    className="bg-blue-600/80 hover:bg-blue-500 text-white px-3 py-1 text-xs rounded transition-colors"
+                                                >
+                                                    Reactivate
+                                                </button>
+                                            ) : (
+                                                <span className="text-slate-400 group-hover:text-blue-400 transition-colors">
+                                                    <Edit2 className="w-4 h-4" />
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
+                                {templates.length === 0 && (
+                                    <p className="text-sm text-slate-500 italic">No {showArchived ? 'archived' : 'active'} templates found.</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -220,9 +356,16 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                     <div className="lg:col-span-2 bg-slate-800 p-6 rounded-xl border border-slate-700">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-lg">{editingTemplate ? `Edit Template: ${editingTemplate.apparatus?.name}` : 'Create New Template'}</h3>
-                            <div className="space-x-3">
+                            <div className="space-x-3 flex items-center">
                                 {editingTemplate && (
-                                    <button onClick={() => { setEditingTemplate(null); setBuilderItems([]); }} className="text-slate-400 hover:text-white">Cancel</button>
+                                    <>
+                                        <button onClick={handleDeleteTemplate} className="text-red-400 hover:text-red-300 font-medium px-2 py-2">
+                                            Archive
+                                        </button>
+                                        <button onClick={() => { setEditingTemplate(null); setBuilderItems([]); setSelectedApparatusId(''); }} className="text-slate-400 hover:text-white px-2 py-2">
+                                            Cancel
+                                        </button>
+                                    </>
                                 )}
                                 <button onClick={handleSaveTemplate} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
                                     Save Template
@@ -407,8 +550,20 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                                             {r.items?.filter((i: any) => i.status !== 'NA').length || 0} / {r.items?.length || 0} items
                                         </td>
                                         <td className="p-4">
-                                            {/* We will route this to a full-screen view mode later, for now just basic text */}
-                                            <span className="text-sm text-blue-400 cursor-not-allowed">View Report (Coming Soon)</span>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleViewReport(r.id)}
+                                                    className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg w-fit"
+                                                >
+                                                    <Eye className="w-4 h-4" /> View Details
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteReport(r.id)}
+                                                    className="text-sm font-medium text-red-400 hover:text-red-300 transition-colors flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg w-fit"
+                                                >
+                                                    <Trash2 className="w-4 h-4" /> Delete
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -419,6 +574,116 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
             )}
 
 
+            {/* Read-Only Report Viewer Modal */}
+            {
+                viewingReport && (
+                    <div className="fixed inset-0 bg-slate-900/90 z-[100] flex justify-center items-center overflow-hidden backdrop-blur-sm p-4 md:p-8">
+                        <div className="bg-slate-900 w-full max-w-5xl h-full max-h-[90vh] flex flex-col border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                            {/* Header */}
+                            <div className="bg-slate-800 p-4 border-b border-slate-700 flex justify-between items-center shrink-0">
+                                <div>
+                                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                        <Truck className="w-6 h-6 text-blue-400" />
+                                        {viewingReport.apparatus?.name} Check Overview
+                                    </h3>
+                                    <div className="flex items-center gap-4 mt-2 text-sm text-slate-400">
+                                        <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {format(new Date(viewingReport.createdAt), 'MMM d, yyyy')}</span>
+                                        <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {format(new Date(viewingReport.createdAt), 'hh:mm a')}</span>
+                                        <select
+                                            value={viewingReport.status}
+                                            onChange={(e) => handleStatusChange(viewingReport.id, e.target.value)}
+                                            className={`px-2 py-0.5 text-xs font-bold rounded uppercase tracking-wider outline-none cursor-pointer ${viewingReport.status === 'Open' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                                                'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                                                }`}
+                                        >
+                                            <option value="Open" className="bg-slate-800 text-slate-200">OPEN</option>
+                                            <option value="Closed" className="bg-slate-800 text-slate-200">CLOSED</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => handleDeleteReport(viewingReport.id)}
+                                        className="bg-red-500/10 hover:bg-red-500/20 text-red-500 p-2 rounded-lg transition-colors border border-red-500/20 flex items-center justify-center"
+                                        title="Delete Report"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => setViewingReport(null)}
+                                        className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg transition-colors flex items-center justify-center"
+                                        title="Close Report Viewer"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Checklist Body */}
+                            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-900/50">
+                                {(() => {
+                                    // Group items by location name
+                                    const grouped = (viewingReport.items || []).reduce((acc: any, item: any) => {
+                                        const locName = item.templateItem?.location?.name || 'Uncategorized';
+                                        if (!acc[locName]) acc[locName] = [];
+                                        acc[locName].push(item);
+                                        return acc;
+                                    }, {});
+
+                                    return Object.entries(grouped || {}).map(([locationName, items]: [string, any]) => (
+                                        <div key={locationName} className="mb-6 last:mb-0">
+                                            <h4 className="text-lg font-bold text-slate-300 mb-4 flex items-center gap-2 border-b border-slate-700/50 pb-2">
+                                                <MapPin className="w-5 h-5 text-blue-400" />
+                                                {locationName}
+                                            </h4>
+                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                {items.map((item: any) => (
+                                                    <div key={item.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex gap-4">
+                                                        <div className="flex-1">
+                                                            <h5 className="font-bold text-white text-base">{item.templateItem?.itemName}</h5>
+
+                                                            {item.status ? (
+                                                                <div className="mt-2 flex items-center gap-2">
+                                                                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${item.status === 'YES' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                                                                        item.status === 'NO' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                                                                            'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                                                                        }`}>
+                                                                        {item.status}
+                                                                    </span>
+                                                                    <span className="text-xs text-slate-400">by {item.completedByUser?.name || 'Unknown'}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="mt-2 inline-block px-2 py-1 rounded text-xs font-bold uppercase bg-slate-800 text-slate-500 border border-slate-700 border-dashed">
+                                                                    NOT CHECKED
+                                                                </span>
+                                                            )}
+
+                                                            {item.comments && (
+                                                                <div className="mt-3 p-2 bg-slate-900/50 rounded-lg text-sm text-slate-300 border border-slate-700/50 flex gap-2 items-start">
+                                                                    <MessageSquare className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                                                                    <p>{item.comments}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {item.templateItem?.adminPhotoUrl && (
+                                                            <div className="w-24 shrink-0 flex flex-col justify-center items-center border-l border-slate-700 pl-4 text-center">
+                                                                <a href={item.templateItem.adminPhotoUrl} target="_blank" rel="noopener noreferrer" className="block w-full rounded bg-black/20 border border-slate-700 hover:border-blue-500 overflow-hidden">
+                                                                    <img src={item.templateItem.adminPhotoUrl} alt="Ref" className="w-full object-contain max-h-16" />
+                                                                </a>
+                                                                <span className="text-[10px] text-slate-500 mt-1 uppercase font-bold">Ref Photo</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                )}
         </div>
     );
 }

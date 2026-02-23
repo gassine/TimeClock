@@ -271,6 +271,7 @@ model TruckCheckTemplate {
   id          String                   @id @default(uuid())
   apparatusId String
   apparatus   Apparatus                @relation(fields: [apparatusId], references: [id], onDelete: Cascade)
+  isArchived  Boolean                  @default(false)
   createdAt   DateTime                 @default(now())
   updatedAt   DateTime                 @updatedAt
   

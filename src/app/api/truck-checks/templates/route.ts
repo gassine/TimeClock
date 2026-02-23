@@ -1,9 +1,13 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const { searchParams } = new URL(request.url);
+        const archived = searchParams.get('archived') === 'true';
+
         const templates = await prisma.truckCheckTemplate.findMany({
+            where: { isArchived: archived },
             include: {
                 apparatus: true,
                 items: {
@@ -28,9 +32,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Apparatus is required' }, { status: 400 });
         }
 
-        // Check if a template already exists for this apparatus
+        // Check if an active template already exists for this apparatus
         const existing = await prisma.truckCheckTemplate.findFirst({
-            where: { apparatusId }
+            where: { apparatusId, isArchived: false }
         });
 
         if (existing) {

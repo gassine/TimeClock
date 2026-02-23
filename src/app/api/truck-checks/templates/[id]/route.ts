@@ -49,11 +49,12 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
     try {
         const { id } = await context.params;
 
-        await prisma.truckCheckTemplate.delete({
-            where: { id }
+        await prisma.truckCheckTemplate.update({
+            where: { id },
+            data: { isArchived: true }
         });
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, message: 'Template archived successfully' });
     } catch (error) {
         console.error('Delete template error:', error);
         return NextResponse.json({ error: 'Failed to delete template' }, { status: 500 });
