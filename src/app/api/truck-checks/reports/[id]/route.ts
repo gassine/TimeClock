@@ -14,7 +14,11 @@ export async function GET(
                 template: true,
                 items: {
                     include: {
-                        templateItem: true
+                        templateItem: {
+                            include: {
+                                location: true
+                            }
+                        }
                     },
                     orderBy: {
                         templateItem: { order: 'asc' }
