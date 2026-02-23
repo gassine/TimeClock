@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { X, Plus, Trash2, Save, Truck, Users, MapPin, Clock, FileText, CheckCircle } from 'lucide-react';
+import { X, Plus, Trash2, Save, Truck, Users, MapPin, Clock, FileText, CheckCircle, Loader2, Calendar } from 'lucide-react';
 
 type FieldReportFormProps = {
     initialData?: any;
@@ -44,6 +44,40 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
     const [activeSearch, setActiveSearch] = useState<string | null>(null);
     const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
     const [focusTarget, setFocusTarget] = useState<{ appIndex: number, pIndex: number } | null>(null);
+
+    const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+    const [fetchingLocation, setFetchingLocation] = useState(false);
+    const [showLocationDropdown, setShowLocationDropdown] = useState(false);
+    const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    const handleLocationSearch = (query: string) => {
+        setFormData({ ...formData, location: query });
+        if (query.trim().length > 3) {
+            if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+            debounceTimeout.current = setTimeout(async () => {
+                setFetchingLocation(true);
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
+                    const data = await res.json();
+                    setLocationSuggestions(data);
+                    setShowLocationDropdown(true);
+                } catch (error) {
+                    console.error('Failed to fetch address suggestions', error);
+                } finally {
+                    setFetchingLocation(false);
+                }
+            }, 500);
+        } else {
+            setShowLocationDropdown(false);
+            setLocationSuggestions([]);
+        }
+    };
+
+    const selectLocation = (item: any) => {
+        const cleanAddress = item.display_name.split(',').slice(0, 3).join(', ');
+        setFormData({ ...formData, location: cleanAddress });
+        setShowLocationDropdown(false);
+    };
 
     // Initialize search terms from initial data
     useEffect(() => {
@@ -257,7 +291,14 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                     type="date"
                                     value={formData.date}
                                     onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white"
+                                    onClick={(e) => {
+                                        try {
+                                            (e.currentTarget as HTMLInputElement).showPicker();
+                                        } catch (err) {
+                                            // Fallback for browsers that don't support showPicker (like older iOS Safari)
+                                        }
+                                    }}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white cursor-pointer [color-scheme:dark]"
                                     required
                                 />
                             </div>
@@ -267,7 +308,14 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                     type="time"
                                     value={formData.alarmTime}
                                     onChange={e => setFormData({ ...formData, alarmTime: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white"
+                                    onClick={(e) => {
+                                        try {
+                                            (e.currentTarget as HTMLInputElement).showPicker();
+                                        } catch (err) {
+                                            // Fallback for browsers that don't support showPicker
+                                        }
+                                    }}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white cursor-pointer [color-scheme:dark]"
                                     required
                                 />
                             </div>
@@ -279,15 +327,31 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                 <input
                                     placeholder="123 Main St"
                                     value={formData.location}
-                                    onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white"
+                                    onChange={e => handleLocationSearch(e.target.value)}
+                                    onBlur={() => setTimeout(() => setShowLocationDropdown(false), 200)}
+                                    onFocus={() => { if (locationSuggestions.length > 0) setShowLocationDropdown(true); }}
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-10 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-500"
                                     required
                                 />
+                                {fetchingLocation && <Loader2 className="absolute right-3 top-2.5 w-5 h-5 animate-spin text-slate-500" />}
+                                {showLocationDropdown && locationSuggestions.length > 0 && (
+                                    <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                        {locationSuggestions.map((loc, idx) => (
+                                            <div
+                                                key={idx}
+                                                onMouseDown={() => selectLocation(loc)}
+                                                className="px-4 py-3 cursor-pointer text-sm hover:bg-slate-700 text-slate-200 border-b border-slate-700/50 last:border-0"
+                                            >
+                                                {loc.display_name.split(',').slice(0, 3).join(',')}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-400 mb-1">District</label>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">District/Box</label>
                                 <input
                                     placeholder="D-1"
                                     value={formData.district}

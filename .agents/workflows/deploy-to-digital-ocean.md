@@ -2,6 +2,9 @@
 description: Deploying to DigitalOcean
 ---
 
+> [!IMPORTANT]
+> **INTERNAL AI INSTRUCTION:** Whenever you modify any code or database schema during a session, you MUST proactively generate the necessary Prisma deployment files and remind the user to deploy them (or deploy them yourself if requested). Do not wait for the user to troubleshoot missing files on the live server. Always ensure the `prisma/migrations` folder is up to date and committed.
+
 Whenever you are asked to finalize work or prepare a deployment to DigitalOcean for this Firefighter TimeClock project, follow these crucial steps to guarantee the remote database accepts your changes without crashing the app:
 
 1. **Always Generate the Prisma SQL Migration**

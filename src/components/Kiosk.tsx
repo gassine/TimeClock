@@ -257,6 +257,11 @@ export default function Kiosk() {
                                 <div>
                                     <label className="block text-sm font-medium text-slate-400 mb-1">Enter Radio ID (PIN)</label>
                                     <input
+                                        ref={(input) => {
+                                            if (input && showLoginModal && loginStep === 'pin') {
+                                                setTimeout(() => input.focus(), 50);
+                                            }
+                                        }}
                                         type="text"
                                         value={loginPin}
                                         onChange={(e) => setLoginPin(e.target.value)}
@@ -282,6 +287,11 @@ export default function Kiosk() {
                                     <p className="text-center text-slate-300 mb-4">Hello, <span className="font-bold text-white">{loginName}</span></p>
                                     <label className="block text-sm font-medium text-slate-400 mb-1">Enter Password</label>
                                     <input
+                                        ref={(input) => {
+                                            if (input && showLoginModal && loginStep === 'password') {
+                                                setTimeout(() => input.focus(), 50);
+                                            }
+                                        }}
                                         type="password"
                                         value={loginPassword}
                                         onChange={(e) => setLoginPassword(e.target.value)}

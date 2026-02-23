@@ -17,7 +17,7 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
     // Modal & Active Report State
     const [isStartingNew, setIsStartingNew] = useState(false);
     const [selectedApparatusId, setSelectedApparatusId] = useState('');
-    const [reportDate, setReportDate] = useState('');
+    const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
     const [activeReport, setActiveReport] = useState<any | null>(null);
     const [syncStatus, setSyncStatus] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -267,7 +267,14 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
                             type="date"
                             value={reportDate}
                             onChange={(e) => setReportDate(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-6 focus:ring-2 focus:ring-blue-500 outline-none text-slate-300"
+                            onClick={(e) => {
+                                try {
+                                    (e.currentTarget as HTMLInputElement).showPicker();
+                                } catch (err) {
+                                    // Fallback for browsers that don't support showPicker
+                                }
+                            }}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-6 focus:ring-2 focus:ring-blue-500 outline-none text-slate-300 cursor-pointer [color-scheme:dark]"
                             required
                         />
 
