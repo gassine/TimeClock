@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const { id } = await params;
+        const report = await prisma.truckCheckReport.findUnique({
+            where: { id },
+            include: {
+                apparatus: true,
+                template: true,
+                items: {
+                    include: {
+                        templateItem: true
+                    },
+                    orderBy: {
+                        templateItem: { order: 'asc' }
+                    }
+                }
+            }
+        });
+
+        if (!report) {
+            return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+        }
+
+        return NextResponse.json(report);
+    } catch (error) {
+        console.error('Error fetching report:', error);
+        return NextResponse.json({ error: 'Failed to fetch report' }, { status: 500 });
+    }
+}
+
 // PUT: Update a specific truck check report (e.g., change status)
 export async function PUT(
     request: NextRequest,
