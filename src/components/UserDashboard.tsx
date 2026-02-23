@@ -255,23 +255,18 @@ export default function UserDashboard({ user }: UserDashboardProps) {
         // Pre-fill
         if (entry) {
             const dIn = new Date(entry.clockIn);
-            setReqDateIn(format(dIn, 'yyyy-MM-dd'));
-            setReqTimeIn(format(dIn, 'HH:mm'));
+            setReqDateIn(format(dIn, "yyyy-MM-dd'T'HH:mm"));
 
             if (entry.clockOut) {
                 const dOut = new Date(entry.clockOut);
-                setReqDateOut(format(dOut, 'yyyy-MM-dd'));
-                setReqTimeOut(format(dOut, 'HH:mm'));
+                setReqDateOut(format(dOut, "yyyy-MM-dd'T'HH:mm"));
             } else {
                 setReqDateOut('');
-                setReqTimeOut('');
             }
         } else {
             // New Entry Request (Not primarily supported by UI yet but logical)
             setReqDateIn('');
-            setReqTimeIn('');
             setReqDateOut('');
-            setReqTimeOut('');
         }
         setReqReason('');
         setRequestModalOpen(true);
@@ -282,8 +277,8 @@ export default function UserDashboard({ user }: UserDashboardProps) {
         setSubmitting(true);
 
         try {
-            const requestedClockIn = new Date(`${reqDateIn}T${reqTimeIn}`).toISOString();
-            const requestedClockOut = (reqDateOut && reqTimeOut) ? new Date(`${reqDateOut}T${reqTimeOut}`).toISOString() : null;
+            const requestedClockIn = new Date(reqDateIn).toISOString();
+            const requestedClockOut = reqDateOut ? new Date(reqDateOut).toISOString() : null;
 
             const res = await fetch('/api/requests', {
                 method: 'POST',

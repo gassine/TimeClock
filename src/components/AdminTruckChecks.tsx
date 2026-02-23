@@ -10,14 +10,13 @@ type UserContext = {
 };
 
 export default function AdminTruckChecks({ currentUser }: { currentUser: UserContext }) {
-    const [subTab, setSubTab] = useState<'templates' | 'reports' | 'requests'>('reports');
+    const [subTab, setSubTab] = useState<'templates' | 'reports'>('reports');
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
 
     // State
     const [templates, setTemplates] = useState<any[]>([]);
     const [reports, setReports] = useState<any[]>([]);
-    const [requests, setRequests] = useState<any[]>([]);
     const [apparatusList, setApparatusList] = useState<any[]>([]);
 
     // Builder State
@@ -57,10 +56,6 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                 const res = await fetch('/api/truck-checks/reports');
                 const data = await res.json();
                 setReports(data || []);
-            } else if (subTab === 'requests') {
-                const res = await fetch('/api/truck-checks/requests');
-                const data = await res.json();
-                setRequests(data || []);
             }
         } catch (error) {
             console.error(error);
@@ -107,23 +102,6 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
             fetchData();
         } catch (error: any) {
             setMessage(error.message);
-        }
-    };
-
-    const handleActionRequest = async (id: string, status: 'APPROVED' | 'DENIED') => {
-        try {
-            const res = await fetch(`/api/truck-checks/requests/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status })
-            });
-
-            if (res.ok) {
-                setMessage(`Request ${status.toLowerCase()}`);
-                fetchData();
-            }
-        } catch (error) {
-            console.error(error);
         }
     };
 
@@ -200,12 +178,6 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                     className={`pb-2 px-2 font-medium transition-colors border-b-2 ${subTab === 'templates' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
                 >
                     Templates Builder
-                </button>
-                <button
-                    onClick={() => setSubTab('requests')}
-                    className={`pb-2 px-2 font-medium transition-colors border-b-2 ${subTab === 'requests' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
-                >
-                    Reopen Requests {requests.length > 0 && <span className="ml-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{requests.length}</span>}
                 </button>
             </div>
 
@@ -446,53 +418,7 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                 </div>
             )}
 
-            {/* REQUESTS TAB */}
-            {subTab === 'requests' && (
-                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                    {requests.length === 0 ? (
-                        <div className="p-12 text-center text-slate-400 flex flex-col items-center">
-                            <CheckCircle className="w-12 h-12 mb-4 text-green-500/50" />
-                            <p className="text-lg font-medium">No pending requests</p>
-                            <p className="text-sm mt-1">All reopen requests have been handled.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto w-full scrollbar-thin">
-                            <table className="w-full min-w-max text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-900/50 border-b border-slate-700">
-                                        <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Report</th>
-                                        <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Requested By</th>
-                                        <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
-                                        <th className="p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-700/50">
-                                    {requests.map(req => (
-                                        <tr key={req.id} className="hover:bg-slate-700/30 transition-colors">
-                                            <td className="p-4">
-                                                <div className="font-medium text-slate-200">{req.report?.apparatus?.name}</div>
-                                                <div className="text-xs text-slate-500">Rep ID: {req.reportId.slice(0, 8)}...</div>
-                                            </td>
-                                            <td className="p-4 text-slate-300">{req.requestedByUser?.name}</td>
-                                            <td className="p-4 text-slate-400">{format(new Date(req.createdAt), 'MMM d, yy HH:mm')}</td>
-                                            <td className="p-4">
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => handleActionRequest(req.id, 'APPROVED')} className="px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 rounded-lg text-sm font-medium transition-colors">
-                                                        Approve
-                                                    </button>
-                                                    <button onClick={() => handleActionRequest(req.id, 'DENIED')} className="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-sm font-medium transition-colors">
-                                                        Deny
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )}
+
         </div>
     );
 }

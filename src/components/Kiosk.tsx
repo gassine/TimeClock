@@ -143,16 +143,24 @@ export default function Kiosk() {
                     </div>
                 ) : (
                     <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-2xl">
-                        {/* Display */}
-                        <div className="bg-slate-900 rounded-xl p-6 mb-6 text-center border border-slate-700 h-24 flex items-center justify-center relative overflow-hidden">
+                        <div className="bg-slate-900 rounded-xl px-6 mb-6 text-center border border-slate-700 h-24 flex items-center justify-center relative overflow-hidden">
                             {status === 'error' && (
-                                <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center animate-pulse">
-                                    <p className="text-red-400 font-bold">{message}</p>
+                                <div className="absolute inset-0 bg-red-500/20 flex items-center justify-center animate-pulse z-10 pointer-events-none">
+                                    <p className="text-red-400 font-bold tracking-normal">{message}</p>
                                 </div>
                             )}
-                            <span className={`text-4xl font-mono tracking-widest ${status === 'error' ? 'hidden' : 'block'}`}>
-                                {pin || <span className="text-slate-600 animate-pulse">_ _ _ _</span>}
-                            </span>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                value={pin}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\\D/g, '');
+                                    if (val.length <= 8) setPin(val);
+                                }}
+                                className={`w-full bg-transparent text-center text-4xl font-mono tracking-widest outline-none text-white placeholder-slate-600 ${status === 'error' ? 'opacity-0' : 'opacity-100'}`}
+                                placeholder="_ _ _ _"
+                                autoFocus
+                            />
                         </div>
 
                         {/* Keypad */}
@@ -191,20 +199,20 @@ export default function Kiosk() {
                         </div>
 
                         {/* Actions */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <button
-                                onClick={() => handleAction('clock-in')}
-                                disabled={!pin || status === 'loading'}
-                                className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xl font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95"
-                            >
-                                Clock In
-                            </button>
+                        <div className="grid grid-cols-2 gap-4 flex-row-reverse">
                             <button
                                 onClick={() => handleAction('clock-out')}
                                 disabled={!pin || status === 'loading'}
                                 className="bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xl font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95"
                             >
                                 Clock Out
+                            </button>
+                            <button
+                                onClick={() => handleAction('clock-in')}
+                                disabled={!pin || status === 'loading'}
+                                className="bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xl font-bold py-4 rounded-xl shadow-lg transition-transform active:scale-95"
+                            >
+                                Clock In
                             </button>
                         </div>
                     </div>

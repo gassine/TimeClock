@@ -109,6 +109,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     const [fieldReportTab, setFieldReportTab] = useState<'reports' | 'types' | 'statuses' | 'requests'>('reports');
     const [editingFieldReport, setEditingFieldReport] = useState<any>(null);
     const [fieldReportRequests, setFieldReportRequests] = useState<any[]>([]);
+    const [truckCheckRequests, setTruckCheckRequests] = useState<any[]>([]);
     const [selectedModRequest, setSelectedModRequest] = useState<any>(null);
     const [incidentTypes, setIncidentTypes] = useState<any[]>([]);
     const [reportStatuses, setReportStatuses] = useState<any[]>([]);
@@ -117,6 +118,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     const [totalReportsCount, setTotalReportsCount] = useState(0);
     const [selectedReport, setSelectedReport] = useState<any | null>(null);
     const [newIncidentType, setNewIncidentType] = useState('');
+    const [editingIncidentType, setEditingIncidentType] = useState<any>(null);
     const [newReportStatus, setNewReportStatus] = useState({ name: '', isDraftLike: false, userCanEditOwn: false, isFinal: false, order: 0 });
     const [editingReportStatus, setEditingReportStatus] = useState<any>(null);
 
@@ -285,9 +287,9 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
     // Fetch requests when tab changes
     useEffect(() => {
-        if (activeTab === 'requests') {
-            fetchRequests();
-        }
+        fetchRequests();
+        fetchFieldReportRequests();
+        fetchTruckCheckRequests();
         if (activeTab === 'apparatus') {
             fetchApparatus();
         }
@@ -306,6 +308,13 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
     }, [activeTab, issueSubTab, fieldReportTab]);
 
+    useEffect(() => {
+        if (message) {
+            const timer = setTimeout(() => setMessage(''), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [message]);
+
     const fetchFieldReports = async () => {
         try {
             const res = await fetch('/api/field-reports?limit=50');
@@ -315,19 +324,6 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             console.error('Failed to fetch reports', error);
         }
     };
-
-    const fetchFieldReportRequests = async () => {
-        try {
-            const res = await fetch('/api/field-report-requests?status=PENDING');
-            if (res.ok) {
-                const data = await res.json();
-                setFieldReportRequests(data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch requests', error);
-        }
-    };
-
     const handleModRequestAction = async (id: string, status: 'APPROVED' | 'DENIED', adminNotes: string) => {
         try {
             const res = await fetch(`/api/field-report-requests/${id}`, {
@@ -416,22 +412,36 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
     };
 
-    const handleAddIncidentType = async (e: React.FormEvent) => {
+    const handleSaveIncidentType = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch('/api/incident-types', {
-                method: 'POST',
+            const isEditing = !!editingIncidentType;
+            const url = isEditing ? `/api/incident-types/${editingIncidentType.id}` : '/api/incident-types';
+            const method = isEditing ? 'PUT' : 'POST';
+            const name = isEditing ? editingIncidentType.name : newIncidentType;
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newIncidentType })
+                body: JSON.stringify({ name })
             });
+
             if (res.ok) {
-                setNewIncidentType('');
+                if (isEditing) {
+                    setEditingIncidentType(null);
+                    setMessage('Incident Type updated');
+                } else {
+                    setNewIncidentType('');
+                    setMessage('Incident Type added');
+                }
                 fetchFieldReportConfig();
-                setMessage('Incident Type added');
+            } else {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to save incident type');
             }
-        } catch (error) {
-            setMessage('Failed to add incident type');
+        } catch (error: any) {
+            setMessage(error.message || 'Failed to save incident type');
         } finally {
             setLoading(false);
         }
@@ -583,6 +593,27 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
     };
 
+    const fetchFieldReportRequests = async () => {
+        try {
+            const res = await fetch('/api/field-report-requests?status=PENDING');
+            if (res.ok) setFieldReportRequests(await res.json());
+        } catch (error) {
+            console.error('Failed to fetch field report requests');
+        }
+    };
+
+    const fetchTruckCheckRequests = async () => {
+        try {
+            const res = await fetch('/api/truck-checks/requests?status=PENDING');
+            if (res.ok) {
+                const data = await res.json();
+                setTruckCheckRequests(data.filter((r: any) => r.status === 'PENDING') || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch truck check requests', error);
+        }
+    };
+
     const fetchRequests = async () => {
         try {
             const res = await fetch('/api/requests?status=PENDING');
@@ -610,6 +641,24 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             }
         } catch (error) {
             console.error('Failed to update request', error);
+        }
+    };
+
+    const handleTruckCheckRequestAction = async (requestId: string, status: 'APPROVED' | 'DENIED') => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/truck-checks/requests/${requestId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            if (!res.ok) throw new Error('Failed to update request');
+            fetchTruckCheckRequests();
+            setMessage(`Truck Check ${status === 'APPROVED' ? 'reopened' : 'denied'} successfully`);
+        } catch (error: any) {
+            setMessage(error?.message || 'Error processing request');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -937,6 +986,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
     };
 
+
     const handleSaveStatus = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -984,6 +1034,16 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
     };
 
+    const isSuccessMessage = message && (
+        message.toLowerCase().includes('success') ||
+        message.toLowerCase().includes('added') ||
+        message.toLowerCase().includes('updated') ||
+        message.toLowerCase().includes('deleted') ||
+        message.toLowerCase().includes('saved') ||
+        message.toLowerCase().includes('archived') ||
+        message.toLowerCase().includes('restored')
+    );
+
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 overflow-x-hidden">
             <div className="max-w-7xl mx-auto w-full whitespace-normal">
@@ -1012,10 +1072,10 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             { id: 'stations', label: 'Stations', icon: MapPin },
                             { id: 'apparatus', label: 'Apparatus', icon: Truck },
                             { id: 'reports', label: 'Time Reports', icon: FileText },
-                            { id: 'requests', label: 'Requests', icon: FileText },
+                            { id: 'requests', label: 'Requests', icon: FileText, badge: requests.length > 0 ? requests.length : null },
                             { id: 'issues', label: 'Issues', icon: AlertTriangle },
                             { id: 'field-reports', label: 'Field Reports', icon: ClipboardList },
-                            { id: 'truck-checks', label: 'Truck Checks', icon: Truck, badge: requests.length > 0 ? requests.length : null },
+                            { id: 'truck-checks', label: 'Truck Checks', icon: Truck },
                             { id: 'logs', label: 'Audit Logs', icon: List },
                         ].map((tab) => (
                             <button
@@ -1040,8 +1100,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
                 <div className="grid gap-8">
                     {message && (
-                        <div className={`p-4 rounded-xl flex items-center gap-3 ${message.includes('success') ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                            {message.includes('success') ? <FileText className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-300 ${isSuccessMessage ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                            {isSuccessMessage ? <FileText className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                             <p className="font-medium">{message}</p>
                         </div>
                     )}
@@ -1603,12 +1663,12 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     )}
                     {/* REQUESTS TAB */}
                     {activeTab === 'requests' && (
-                        <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
-                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><FileText className="text-yellow-400" /> Pending Time Change Requests</h2>
+                        <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+                            <h2 className="text-xl font-bold p-6 border-b border-slate-700 flex items-center gap-2"><FileText className="text-yellow-400" /> Pending Time Change Requests ({requests.length})</h2>
                             {requests.length === 0 ? (
-                                <p className="text-slate-400 text-center py-8">No pending requests.</p>
+                                <p className="text-slate-400 text-center py-8">No pending time change requests.</p>
                             ) : (
-                                <div className="space-y-4">
+                                <div className="p-6 space-y-4">
                                     {requests.map((req: any) => (
                                         <div key={req.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-col md:flex-row justify-between gap-4">
                                             <div>
@@ -1648,6 +1708,88 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+                            {/* FIELD REPORT MOD REQUESTS */}
+                            <h2 className="text-xl font-bold p-6 border-b border-t border-slate-700 flex items-center gap-2 mt-4"><GitPullRequest className="text-blue-400" /> Pending Field Report Mods ({fieldReportRequests.filter(r => r.status === 'PENDING').length})</h2>
+                            {fieldReportRequests.filter(r => r.status === 'PENDING').length === 0 ? (
+                                <p className="text-slate-400 text-center py-8">No pending field report modifications.</p>
+                            ) : (
+                                <div className="p-6 overflow-x-auto w-full scrollbar-thin">
+                                    <table className="w-full text-left whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
+                                        <thead>
+                                            <tr className="bg-slate-900/50 text-slate-400 text-sm">
+                                                <th className="p-4 font-semibold">Report Date</th>
+                                                <th className="p-4 font-semibold">Requested By</th>
+                                                <th className="p-4 font-semibold">Type</th>
+                                                <th className="p-4 font-semibold">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-700">
+                                            {fieldReportRequests.filter(r => r.status === 'PENDING').map(req => (
+                                                <tr key={req.id} className="hover:bg-slate-700/30 transition-colors">
+                                                    <td className="p-4 font-medium">{format(new Date(req.report.date), 'MMM d, yyyy')}</td>
+                                                    <td className="p-4 text-white">{req.requestedByUser?.name || 'Unknown'}</td>
+                                                    <td className="p-4">
+                                                        <span className="px-2 py-1 rounded bg-slate-700 text-xs font-bold font-mono">
+                                                            {req.requestType === 'add_self_to_apparatus' ? 'Add Self to Unit' :
+                                                                req.requestType === 'add_apparatus_with_self' ? 'Add Unit & Self' : 'General Edit'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 flex gap-2">
+                                                        <button
+                                                            onClick={() => setSelectedModRequest(req)}
+                                                            className="text-blue-400 hover:text-blue-300 font-medium text-sm flex items-center gap-1"
+                                                        >
+                                                            Review
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )
+                            }
+
+                            {/* TRUCK CHECK REOPEN REQUESTS */}
+                            <h2 className="text-xl font-bold p-6 border-b border-t border-slate-700 flex items-center gap-2 mt-4"><Truck className="text-orange-400" /> Pending Truck Check Reopens ({truckCheckRequests.length})</h2>
+                            {truckCheckRequests.length === 0 ? (
+                                <p className="text-slate-400 text-center py-8">No pending truck check reopen requests.</p>
+                            ) : (
+                                <div className="p-6 overflow-x-auto w-full scrollbar-thin">
+                                    <table className="w-full text-left whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
+                                        <thead>
+                                            <tr className="bg-slate-900/50 text-slate-400 text-sm">
+                                                <th className="p-4 font-semibold">Report</th>
+                                                <th className="p-4 font-semibold">Requested By</th>
+                                                <th className="p-4 font-semibold">Date</th>
+                                                <th className="p-4 font-semibold">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-700">
+                                            {truckCheckRequests.map(req => (
+                                                <tr key={req.id} className="hover:bg-slate-700/30 transition-colors">
+                                                    <td className="p-4 font-medium text-slate-200">
+                                                        <div>{req.report?.apparatus?.name}</div>
+                                                        <div className="text-xs text-slate-500 font-mono mt-1">ID: {req.reportId.slice(0, 8)}...</div>
+                                                    </td>
+                                                    <td className="p-4 text-white">{req.requestedByUser?.name || 'Unknown'}</td>
+                                                    <td className="p-4 text-slate-400">{format(new Date(req.createdAt), 'MMM d, yyyy HH:mm')}</td>
+                                                    <td className="p-4">
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => handleTruckCheckRequestAction(req.id, 'APPROVED')} className="px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/20 rounded-lg text-sm font-medium transition-colors">
+                                                                Approve
+                                                            </button>
+                                                            <button onClick={() => handleTruckCheckRequestAction(req.id, 'DENIED')} className="px-3 py-1.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-sm font-medium transition-colors">
+                                                                Deny
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             )}
                         </div>
@@ -1832,7 +1974,6 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                         <div className="space-y-6">
                             <div className="flex gap-4 border-b border-slate-700 pb-4 mb-6">
                                 <button onClick={() => setFieldReportTab('reports')} className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 ${fieldReportTab === 'reports' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><FileText className="w-4 h-4" /> Reports</button>
-                                <button onClick={() => { setFieldReportTab('requests'); fetchFieldReportRequests(); }} className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 ${fieldReportTab === 'requests' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><GitPullRequest className="w-4 h-4" /> Requests {fieldReportRequests.filter(r => r.status === 'PENDING').length > 0 && <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{fieldReportRequests.filter(r => r.status === 'PENDING').length}</span>}</button>
                                 <button onClick={() => setFieldReportTab('types')} className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 ${fieldReportTab === 'types' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Settings className="w-4 h-4" /> Incident Types</button>
                                 <button onClick={() => setFieldReportTab('statuses')} className={`px-4 py-2 rounded-lg font-bold flex items-center gap-2 ${fieldReportTab === 'statuses' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><List className="w-4 h-4" /> Statuses</button>
                             </div>
@@ -1840,15 +1981,30 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             {fieldReportTab === 'types' && (
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                     <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 h-fit">
-                                        <h3 className="text-xl font-bold mb-4">New Incident Type</h3>
-                                        <form onSubmit={handleAddIncidentType} className="space-y-4">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h3 className="text-xl font-bold">{editingIncidentType ? 'Edit Incident Type' : 'New Incident Type'}</h3>
+                                            {editingIncidentType && (
+                                                <button onClick={() => setEditingIncidentType(null)} className="text-sm text-slate-400 hover:text-white">
+                                                    Cancel
+                                                </button>
+                                            )}
+                                        </div>
+                                        <form onSubmit={handleSaveIncidentType} className="space-y-4">
                                             <input
                                                 placeholder="Type Name"
-                                                value={newIncidentType}
-                                                onChange={e => setNewIncidentType(e.target.value)}
+                                                value={editingIncidentType ? editingIncidentType.name : newIncidentType}
+                                                onChange={e => {
+                                                    if (editingIncidentType) {
+                                                        setEditingIncidentType({ ...editingIncidentType, name: e.target.value });
+                                                    } else {
+                                                        setNewIncidentType(e.target.value);
+                                                    }
+                                                }}
                                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required
                                             />
-                                            <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors">Add Type</button>
+                                            <button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors">
+                                                {editingIncidentType ? 'Save Changes' : 'Add Type'}
+                                            </button>
                                         </form>
                                     </div>
                                     <div className="md:col-span-2 bg-slate-800 rounded-2xl p-6 border border-slate-700">
@@ -1859,7 +2015,10 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                     <tr key={t.id} className="border-b border-slate-700/50">
                                                         <td className="p-2 font-bold">{t.name}</td>
                                                         <td className="p-2">
-                                                            <button onClick={() => handleDeleteIncidentType(t.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></button>
+                                                            <div className="flex gap-2 items-center">
+                                                                <button onClick={() => setEditingIncidentType(t)} className="text-slate-400 hover:text-blue-400"><Edit2 className="w-4 h-4" /></button>
+                                                                <button onClick={() => handleDeleteIncidentType(t.id)} className="text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
