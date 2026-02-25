@@ -19,6 +19,7 @@ type UserDashboardProps = {
 export default function UserDashboard({ user }: UserDashboardProps) {
     const [stats, setStats] = useState({ weekHours: 0, monthHours: 0, weekCalls: 0, monthCalls: 0 });
     const [entries, setEntries] = useState<any[]>([]);
+    const [activePersonnel, setActivePersonnel] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [requestModalOpen, setRequestModalOpen] = useState(false);
     const [selectedEntry, setSelectedEntry] = useState<any>(null);
@@ -72,6 +73,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
 
             const res = await fetch(`/api/time-entries?firefighterId=${user.id}&start=${thirtyDaysAgo.toISOString()}`);
             const data = await res.json();
+
+            // Get currently clocked-in personnel
+            const activeRes = await fetch('/api/time-entries?activeOnly=true');
+            const activeData = await activeRes.json();
+            if (Array.isArray(activeData)) {
+                setActivePersonnel(activeData);
+            }
 
             // Get Issues
             const issuesRes = await fetch('/api/issues?archived=false');
@@ -482,6 +490,35 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             {/* TIMESHEET TAB */}
             {activeTab === 'timesheet' && (
                 <div className="space-y-8 animate-in fade-in duration-300">
+                    {/* Clocked-In Personnel */}
+                    <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden w-full">
+                        <div className="p-4 md:p-6 border-b border-slate-700">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <CheckCircle className="text-green-400" /> Currently On Shift
+                            </h2>
+                        </div>
+                        <div className="p-4 md:p-6">
+                            {activePersonnel.length === 0 ? (
+                                <p className="text-slate-500 italic">No personnel currently clocked in.</p>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {activePersonnel.map((entry: any) => (
+                                        <div key={entry.id} className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 flex items-center gap-3">
+                                            <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse shrink-0"></div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-bold text-white text-base truncate">{entry.firefighter?.name}</div>
+                                                <div className="text-xs text-slate-400 truncate">{entry.firefighter?.role?.name || 'Firefighter'}</div>
+                                            </div>
+                                            <div className="ml-2 text-xs font-mono text-slate-500 shrink-0">
+                                                In: {format(new Date(entry.clockIn), 'hh:mm a')}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
@@ -700,7 +737,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             {activeTab === 'issues' && (
                 <div className="space-y-6 animate-in fade-in duration-300">
                     <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-                        <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><AlertCircle className="text-yellow-400" /> Safety Issues</h2>
+                        <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2"><AlertCircle className="text-yellow-400" /> Known Issues</h2>
                         <button onClick={() => setIssueModalOpen(true)} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg hover:shadow-blue-500/20 transition-all">
                             <Plus className="w-5 h-5" /> Report Issue
                         </button>

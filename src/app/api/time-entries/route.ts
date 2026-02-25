@@ -7,6 +7,7 @@ export async function GET(request: Request) {
     const start = searchParams.get('start');
     const end = searchParams.get('end');
     const includeArchived = searchParams.get('includeArchived') === 'true';
+    const activeOnly = searchParams.get('activeOnly') === 'true';
 
     try {
         const where: any = {};
@@ -34,13 +35,20 @@ export async function GET(request: Request) {
         }
 
         // If filtering, remove the 'take' limit to get accurate totals
-        const limit = (start || end || firefighterId) ? undefined : 50;
+        const limit = (start || end || firefighterId || activeOnly) ? undefined : 50;
+
+        if (activeOnly) {
+            where.clockOut = null;
+        }
 
         const timeEntries = await prisma.timeEntry.findMany({
             where,
             include: {
                 firefighter: {
-                    select: { name: true },
+                    select: {
+                        name: true,
+                        role: { select: { name: true } }
+                    },
                 },
             },
             orderBy: { clockIn: 'desc' },
