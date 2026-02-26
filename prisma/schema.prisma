@@ -15,8 +15,14 @@ model Firefighter {
   pin         String      @unique // Radio ID, required and unique
   stationId   String?
   station     Station?    @relation(fields: [stationId], references: [id], onDelete: SetNull)
+  shiftId     String?
+  shift       Shift?      @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  phoneNumber String?     // Optional contact phone number
+  startDate   DateTime?   // Optional start/hire date
+  isHiddenFromDirectory Boolean @default(false) // Hide from public directory without archiving
   timeEntries TimeEntry[]
   isActive    Boolean     @default(true)
+  isAdmin     Boolean     @default(false) // Admin access per-user, not per-role
   password    String?     // Optional hashed password for dashboard access
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -61,6 +67,15 @@ model TimeChangeRequest {
   updatedAt         DateTime  @updatedAt
 }
 
+model Shift {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  description  String?
+  firefighters Firefighter[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
 model Station {
   id           String        @id @default(cuid())
   name         String        @unique
@@ -69,6 +84,18 @@ model Station {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   apparatus    Apparatus[]
+}
+
+model DirectorySettings {
+  id             String  @id @default(cuid())
+  showRadioId    Boolean @default(true)
+  showName       Boolean @default(true)
+  showRole       Boolean @default(true)
+  showStation    Boolean @default(true)
+  showShift      Boolean @default(true)
+  showPhone      Boolean @default(true)
+  showStartDate  Boolean @default(true)
+  roleOrder      String  @default("[]") // JSON array of role IDs in priority order
 }
 
 model Apparatus {
@@ -87,8 +114,7 @@ model Apparatus {
 
 model Role {
   id           String        @id @default(cuid())
-  name         String        @unique // e.g., "Firefighter", "Captain", "Admin"
-  isAdmin      Boolean       @default(false)
+  name         String        @unique // e.g., "Firefighter", "Captain", "Chief"
   firefighters Firefighter[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

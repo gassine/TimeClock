@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck } from 'lucide-react';
+import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users } from 'lucide-react';
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import UserTruckChecks from './UserTruckChecks';
 import { format } from 'date-fns';
+import { formatPhoneNumber } from '@/lib/utils';
 
 type UserDashboardProps = {
     user: {
@@ -43,7 +44,12 @@ export default function UserDashboard({ user }: UserDashboardProps) {
     const [editingIssue, setEditingIssue] = useState<{ id: string, title: string, description: string } | null>(null);
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks'>('timesheet');
+    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks' | 'directory'>('timesheet');
+
+    // Directory State
+    const [directoryData, setDirectoryData] = useState<any[]>([]);
+    const [dirSettings, setDirSettings] = useState<any>(null);
+    const [directoryLoading, setDirectoryLoading] = useState(false);
 
     // Field Reports State
     const [drafts, setDrafts] = useState<any[]>([]);
@@ -167,6 +173,30 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             setLoading(false);
         }
     };
+
+    // Fetch Directory Data
+    useEffect(() => {
+        if (activeTab === 'directory') {
+            const fetchDirectory = async () => {
+                setDirectoryLoading(true);
+                try {
+                    const [ffRes, settingsRes] = await Promise.all([
+                        fetch('/api/directory'),
+                        fetch('/api/directory-settings'),
+                    ]);
+                    const ffData = await ffRes.json();
+                    const settingsData = await settingsRes.json();
+                    if (Array.isArray(ffData)) setDirectoryData(ffData);
+                    setDirSettings(settingsData);
+                } catch (error) {
+                    console.error('Failed to load directory', error);
+                } finally {
+                    setDirectoryLoading(false);
+                }
+            };
+            fetchDirectory();
+        }
+    }, [activeTab]);
 
     const loadMoreRecent = async () => {
         try {
@@ -449,16 +479,23 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             </header>
 
             {/* Tab Navigation */}
-            <div className="flex gap-4 border-b border-slate-700 mb-6">
+            <div className="flex gap-4 border-b border-slate-700 mb-6 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
                 <button
                     onClick={() => setActiveTab('timesheet')}
-                    className={`pb-4 px-2 font-bold transition-all ${activeTab === 'timesheet' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`pb-4 px-2 font-bold whitespace-nowrap transition-all ${activeTab === 'timesheet' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                     My Timesheet
                 </button>
                 <button
+                    onClick={() => setActiveTab('directory')}
+                    className={`pb-3 px-2 font-medium whitespace-nowrap transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'directory' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}`}
+                >
+                    <Users className="w-5 h-5" />
+                    Directory
+                </button>
+                <button
                     onClick={() => setActiveTab('issues')}
-                    className={`pb-4 px-2 font-bold transition-all flex items-center gap-2 ${activeTab === 'issues' ? 'text-yellow-400 border-b-2 border-yellow-400' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`pb-4 px-2 font-bold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'issues' ? 'text-yellow-400 border-b-2 border-yellow-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                     Issues
                     {issues.length > 0 && (
@@ -469,7 +506,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                 </button>
                 <button
                     onClick={() => setActiveTab('reports')}
-                    className={`pb-4 px-2 font-bold transition-all flex items-center gap-2 ${activeTab === 'reports' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`pb-4 px-2 font-bold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'reports' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                     <ClipboardList className="w-5 h-5" /> Field Reports
                     {drafts.length > 0 && (
@@ -480,7 +517,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                 </button>
                 <button
                     onClick={() => setActiveTab('truck-checks')}
-                    className={`pb-3 px-2 font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'truck-checks' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}`}
+                    className={`pb-3 px-2 font-medium whitespace-nowrap transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'truck-checks' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}`}
                 >
                     <Truck className="w-5 h-5 text-blue-400" />
                     Truck Checks
@@ -1001,6 +1038,112 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             {activeTab === 'truck-checks' && (
                 <div className="animate-in fade-in duration-300">
                     <UserTruckChecks user={user} />
+                </div>
+            )}
+
+            {/* DIRECTORY TAB */}
+            {activeTab === 'directory' && (
+                <div className="animate-in fade-in duration-300 space-y-6">
+                    <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 border border-slate-700">
+                        <h2 className="text-xl font-bold flex items-center gap-2 mb-6"><Users className="text-emerald-400" /> Firefighter Directory</h2>
+                        {directoryLoading ? (
+                            <p className="text-slate-400">Loading directory...</p>
+                        ) : directoryData.length === 0 ? (
+                            <p className="text-slate-500">No firefighters found in directory.</p>
+                        ) : (() => {
+                            // Group by station, then shift, sort by role order
+                            const roleOrder: string[] = dirSettings?.roleOrder || [];
+                            const getRolePriority = (roleId: string) => {
+                                const idx = roleOrder.indexOf(roleId);
+                                return idx >= 0 ? idx : 9999;
+                            };
+
+                            const stationGroups: Record<string, any[]> = {};
+                            directoryData.forEach((ff: any) => {
+                                const stationName = ff.station?.name || 'Unassigned';
+                                if (!stationGroups[stationName]) stationGroups[stationName] = [];
+                                stationGroups[stationName].push(ff);
+                            });
+
+                            const stationNames = Object.keys(stationGroups).sort((a, b) => {
+                                if (a === 'Unassigned') return 1;
+                                if (b === 'Unassigned') return -1;
+                                return a.localeCompare(b);
+                            });
+
+                            const s = dirSettings || {};
+
+                            return (
+                                <div className="space-y-8">
+                                    {stationNames.map(stationName => {
+                                        const members = stationGroups[stationName];
+                                        // Group by shift
+                                        const shiftGroups: Record<string, any[]> = {};
+                                        members.forEach((ff: any) => {
+                                            const shiftName = ff.shift?.name || 'Unassigned';
+                                            if (!shiftGroups[shiftName]) shiftGroups[shiftName] = [];
+                                            shiftGroups[shiftName].push(ff);
+                                        });
+
+                                        const shiftNames = Object.keys(shiftGroups).sort((a, b) => {
+                                            if (a === 'Unassigned') return 1;
+                                            if (b === 'Unassigned') return -1;
+                                            return a.localeCompare(b);
+                                        });
+
+                                        return (
+                                            <div key={stationName} className="bg-slate-900/50 rounded-xl border border-slate-700 overflow-hidden">
+                                                <div className="bg-slate-700/50 px-5 py-3 border-b border-slate-600">
+                                                    <h3 className="text-lg font-bold text-emerald-400">{stationName}</h3>
+                                                </div>
+                                                {shiftNames.map(shiftName => {
+                                                    const shiftMembers = [...shiftGroups[shiftName]].sort(
+                                                        (a, b) => getRolePriority(a.role?.id || '') - getRolePriority(b.role?.id || '') || a.name.localeCompare(b.name)
+                                                    );
+
+                                                    return (
+                                                        <div key={shiftName} className="border-b border-slate-700/50 last:border-b-0">
+                                                            <div className="px-5 py-2 bg-slate-800/50">
+                                                                <span className="text-sm font-semibold text-cyan-400">{shiftName}</span>
+                                                            </div>
+                                                            <div className="overflow-x-auto">
+                                                                <table className="w-full text-left table-fixed">
+                                                                    <thead>
+                                                                        <tr className="text-slate-400 text-xs border-b border-slate-700/50">
+                                                                            {s.showRadioId !== false && <th className="px-4 py-2 w-[12%]">Radio ID</th>}
+                                                                            {s.showName !== false && <th className="px-4 py-2 w-[22%]">Name</th>}
+                                                                            {s.showRole !== false && <th className="px-4 py-2 w-[18%]">Role</th>}
+                                                                            {s.showStation !== false && <th className="px-4 py-2 w-[12%]">Station</th>}
+                                                                            {s.showShift !== false && <th className="px-4 py-2 w-[12%]">Shift</th>}
+                                                                            {s.showPhone !== false && <th className="px-4 py-2 w-[14%]">Phone</th>}
+                                                                            {s.showStartDate !== false && <th className="px-4 py-2 w-[10%]">Start Date</th>}
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-slate-700/30">
+                                                                        {shiftMembers.map((ff: any) => (
+                                                                            <tr key={ff.id} className="hover:bg-slate-700/30 transition-colors">
+                                                                                {s.showRadioId !== false && <td className="px-4 py-2.5 text-sm font-mono text-slate-300">{ff.pin}</td>}
+                                                                                {s.showName !== false && <td className="px-4 py-2.5 text-sm font-medium">{ff.name}</td>}
+                                                                                {s.showRole !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{ff.role?.name || '-'}</td>}
+                                                                                {s.showStation !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{ff.station?.name || '-'}</td>}
+                                                                                {s.showShift !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{ff.shift?.name || '-'}</td>}
+                                                                                {s.showPhone !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{formatPhoneNumber(ff.phoneNumber) || '-'}</td>}
+                                                                                {s.showStartDate !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{ff.startDate ? new Date(ff.startDate).toLocaleDateString() : '-'}</td>}
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
+                    </div>
                 </div>
             )}
         </div>

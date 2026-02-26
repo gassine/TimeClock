@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma';
+import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/utils';
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 
 export async function GET() {
     try {
@@ -18,7 +20,7 @@ import { logAdminAction } from '@/lib/logger';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { name, roleId, stationId, pin } = body;
+        const { name, roleId, stationId, shiftId, pin, phoneNumber, startDate, isAdmin, password } = body;
 
         if (!pin) {
             return NextResponse.json({ error: 'PIN (Radio ID) is required' }, { status: 400 });
@@ -28,15 +30,24 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Role is required' }, { status: 400 });
         }
 
+        if (!isValidPhoneNumber(phoneNumber)) {
+            return NextResponse.json({ error: 'Invalid phone number format. Must be 10 or 11 digits.' }, { status: 400 });
+        }
+
         const firefighter = await prisma.firefighter.create({
             data: {
                 name,
                 roleId,
                 stationId: stationId || null,
+                shiftId: shiftId || null,
                 pin,
+                phoneNumber: formatPhoneNumber(phoneNumber),
+                startDate: startDate ? new Date(startDate) : null,
                 isActive: true,
+                isAdmin: isAdmin || false,
+                password: password ? await bcrypt.hash(password, 10) : null,
             },
-            include: { role: true },
+            include: { role: true, station: true, shift: true },
         });
 
         await logAdminAction(

@@ -9,11 +9,11 @@ export async function PUT(
     try {
         const { id } = await params;
         const body = await request.json();
-        const { name, isAdmin } = body;
+        const { name } = body;
 
         const role = await prisma.role.update({
             where: { id },
-            data: { name, isAdmin },
+            data: { name },
         });
 
         await logAdminAction(

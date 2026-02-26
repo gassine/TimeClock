@@ -48,7 +48,7 @@ export async function POST(request: Request) {
             {
                 id: firefighter.id,
                 name: firefighter.name,
-                isAdmin: firefighter.role.isAdmin,
+                isAdmin: firefighter.isAdmin,
                 role: firefighter.role.name,
                 pin: firefighter.pin
             },
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
             user: {
                 id: firefighter.id,
                 name: firefighter.name,
-                isAdmin: firefighter.role.isAdmin
+                isAdmin: firefighter.isAdmin
             }
         });
 

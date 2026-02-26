@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, ChevronRight, ChevronDown, User, Shield, Briefcase, MapPin, Users, List, UserPlus, RefreshCw, GitPullRequest, Settings, Search, Filter, ChevronLeft, BarChart3, Loader2 } from 'lucide-react';
+import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, ChevronRight, ChevronDown, User, Shield, Briefcase, MapPin, Users, List, UserPlus, RefreshCw, GitPullRequest, Settings, Search, Filter, ChevronLeft, BarChart3, Loader2, Eye, EyeOff, Phone, Hash, Archive } from 'lucide-react';
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import RequestDetailModal from './RequestDetailModal';
 import AdminTruckChecks from './AdminTruckChecks';
 import { format } from 'date-fns';
 import LogsTable from './LogsTable';
+import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/utils';
 
 type Role = {
     id: string;
     name: string;
-    isAdmin: boolean;
     createdAt: string;
 };
 
@@ -20,6 +20,13 @@ type Station = {
     id: string;
     name: string;
     address: string | null;
+    createdAt: string;
+};
+
+type Shift = {
+    id: string;
+    name: string;
+    description: string | null;
     createdAt: string;
 };
 
@@ -32,6 +39,18 @@ type Apparatus = {
     createdAt: string;
 };
 
+type DirectorySettings = {
+    id: string;
+    showRadioId: boolean;
+    showName: boolean;
+    showRole: boolean;
+    showStation: boolean;
+    showShift: boolean;
+    showPhone: boolean;
+    showStartDate: boolean;
+    roleOrder: string[];
+};
+
 type Firefighter = {
     id: string;
     name: string;
@@ -39,8 +58,14 @@ type Firefighter = {
     role: Role;
     stationId: string | null;
     station?: Station | null;
+    shiftId: string | null;
+    shift?: Shift | null;
     pin: string;
+    phoneNumber: string | null;
+    startDate: string | null;
     isActive: boolean;
+    isAdmin: boolean;
+    isHiddenFromDirectory: boolean;
     createdAt: string;
 };
 
@@ -83,19 +108,22 @@ type AdminDashboardProps = {
     initialFirefighters: Firefighter[];
     initialRoles: Role[];
     initialStations: Station[];
+    initialShifts: Shift[];
     currentUser: { id: string; name: string };
 };
 
-export default function AdminDashboard({ initialFirefighters, initialRoles, initialStations, currentUser }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks'>('reports');
+export default function AdminDashboard({ initialFirefighters, initialRoles, initialStations, initialShifts, currentUser }: AdminDashboardProps) {
+    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'shifts' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks' | 'directory-settings'>('reports');
 
     // Data States
     const [firefighters, setFirefighters] = useState<Firefighter[]>(initialFirefighters);
     const [roles, setRoles] = useState<Role[]>(initialRoles);
     const [stations, setStations] = useState<Station[]>(initialStations);
+    const [shifts, setShifts] = useState<Shift[]>(initialShifts);
     const [apparatus, setApparatus] = useState<Apparatus[]>([]);
     const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
     const [requests, setRequests] = useState<any[]>([]);
+    const [directorySettings, setDirectorySettings] = useState<DirectorySettings | null>(null);
 
     // Issue State
     const [issues, setIssues] = useState<Issue[]>([]);
@@ -164,13 +192,16 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
     const sortedRoles = [...roles].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     const sortedStations = [...stations].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const sortedShifts = [...shifts].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     const sortedApparatus = [...apparatus].sort((a, b) => a.name.localeCompare(b.name));
 
     // Form States
-    const [newFirefighter, setNewFirefighter] = useState<{ name: string; roleId: string; stationId: string | null; pin: string; password: string }>({ name: '', roleId: '', stationId: null, pin: '', password: '' });
+    const [newFirefighter, setNewFirefighter] = useState<{ name: string; roleId: string; stationId: string | null; shiftId: string | null; pin: string; password: string; phoneNumber: string; startDate: string }>({ name: '', roleId: '', stationId: null, shiftId: null, pin: '', password: '', phoneNumber: '', startDate: '' });
     const [editingPassword, setEditingPassword] = useState('');
-    const [newRole, setNewRole] = useState({ name: '', isAdmin: false });
+    const [newRole, setNewRole] = useState({ name: '' });
     const [newStation, setNewStation] = useState({ name: '', address: '' });
+    const [newShift, setNewShift] = useState({ name: '', description: '' });
+    const [editingShift, setEditingShift] = useState<Shift | null>(null);
 
     // Apparatus State
     const [editingApparatus, setEditingApparatus] = useState<Apparatus | null>(null);
@@ -305,6 +336,9 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             if (fieldReportTab === 'reports') {
                 fetchFieldReports();
             }
+        }
+        if (activeTab === 'directory-settings') {
+            fetchDirectorySettings();
         }
     }, [activeTab, issueSubTab, fieldReportTab]);
 
@@ -745,6 +779,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     };
 
     const handleToggleArchiveFirefighter = async (firefighter: Firefighter) => {
+        const action = firefighter.isActive ? 'archive' : 'restore';
+        if (!confirm(`Are you sure you want to ${action} ${firefighter.name}?${firefighter.isActive ? ' They will no longer appear in active rosters.' : ''}`)) return;
         setLoading(true);
         setMessage('');
         try {
@@ -773,6 +809,12 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
     const handleAddFirefighter = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!isValidPhoneNumber(newFirefighter.phoneNumber)) {
+            setMessage('Invalid phone number format. Must be 10 or 11 digits.');
+            return;
+        }
+
         setLoading(true);
         setMessage('');
 
@@ -787,7 +829,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             if (!res.ok) throw new Error(data.error || 'Failed to create firefighter');
 
             setFirefighters([...firefighters, data]);
-            setNewFirefighter({ name: '', roleId: '', stationId: '', pin: '', password: '' });
+            setNewFirefighter({ name: '', roleId: '', stationId: '', shiftId: null, pin: '', password: '', phoneNumber: '', startDate: '' });
             setMessage('Firefighter added successfully!');
         } catch (err: any) {
             setMessage(err.message);
@@ -799,6 +841,12 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     const handleUpdateFirefighter = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingFirefighter) return;
+
+        if (!isValidPhoneNumber(editingFirefighter.phoneNumber)) {
+            setMessage('Invalid phone number format. Must be 10 or 11 digits.');
+            return;
+        }
+
         setLoading(true);
         setMessage('');
 
@@ -810,7 +858,12 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     name: editingFirefighter.name,
                     roleId: editingFirefighter.roleId,
                     stationId: editingFirefighter.stationId,
+                    shiftId: editingFirefighter.shiftId,
                     pin: editingFirefighter.pin,
+                    phoneNumber: editingFirefighter.phoneNumber,
+                    startDate: editingFirefighter.startDate,
+                    isHiddenFromDirectory: editingFirefighter.isHiddenFromDirectory,
+                    isAdmin: editingFirefighter.isAdmin,
                 }),
             });
 
@@ -856,7 +909,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to create role');
             setRoles([data, ...roles]);
-            setNewRole({ name: '', isAdmin: false });
+            setNewRole({ name: '' });
             setMessage('Role added successfully!');
         } catch (err: any) {
             setMessage(err.message);
@@ -874,7 +927,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             const res = await fetch(`/api/roles/${editingRole.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: editingRole.name, isAdmin: editingRole.isAdmin }),
+                body: JSON.stringify({ name: editingRole.name }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Failed to update role');
@@ -958,6 +1011,129 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             if (!res.ok) throw new Error('Failed to delete station');
             setStations(stations.filter(s => s.id !== id));
             setMessage('Station deleted successfully');
+        } catch (err: any) {
+            setMessage(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // SHIFT HANDLERS
+    const handleAddShift = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setMessage('');
+        try {
+            const res = await fetch('/api/shifts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newShift),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to create shift');
+            setShifts([data, ...shifts]);
+            setNewShift({ name: '', description: '' });
+            setMessage('Shift added successfully!');
+        } catch (err: any) {
+            setMessage(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateShift = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingShift) return;
+        setLoading(true);
+        setMessage('');
+        try {
+            const res = await fetch(`/api/shifts/${editingShift.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: editingShift.name, description: editingShift.description }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to update shift');
+            setShifts(shifts.map(s => s.id === data.id ? data : s));
+            setEditingShift(null);
+            setMessage('Shift updated successfully!');
+        } catch (err: any) {
+            setMessage(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteShift = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this shift?')) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/shifts/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete shift');
+            setShifts(shifts.filter(s => s.id !== id));
+            setMessage('Shift deleted successfully');
+        } catch (err: any) {
+            setMessage(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // DIRECTORY SETTINGS HANDLERS
+    const fetchDirectorySettings = async () => {
+        try {
+            const res = await fetch('/api/directory-settings');
+            if (res.ok) {
+                const data = await res.json();
+                setDirectorySettings(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch directory settings', error);
+        }
+    };
+
+    const handleSaveDirectorySettings = async () => {
+        if (!directorySettings) return;
+        setLoading(true);
+        try {
+            const res = await fetch('/api/directory-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(directorySettings),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setDirectorySettings(data);
+                setMessage('Directory settings saved successfully!');
+            } else {
+                throw new Error('Failed to save');
+            }
+        } catch (err: any) {
+            setMessage(err.message || 'Failed to save directory settings');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleHiddenFromDirectory = async (ff: Firefighter) => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/firefighters/${ff.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: ff.name,
+                    roleId: ff.roleId,
+                    stationId: ff.stationId,
+                    shiftId: ff.shiftId,
+                    pin: ff.pin,
+                    isHiddenFromDirectory: !ff.isHiddenFromDirectory,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to update');
+            setFirefighters(firefighters.map(f => f.id === ff.id ? { ...f, isHiddenFromDirectory: !f.isHiddenFromDirectory } : f));
+            setMessage(`${ff.name} ${ff.isHiddenFromDirectory ? 'shown in' : 'hidden from'} directory`);
         } catch (err: any) {
             setMessage(err.message);
         } finally {
@@ -1105,7 +1281,9 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     { id: 'firefighters', label: 'Roster', icon: Users, badge: null },
                                     { id: 'roles', label: 'Roles', icon: Shield, badge: null },
                                     { id: 'stations', label: 'Stations', icon: MapPin, badge: null },
+                                    { id: 'shifts', label: 'Shifts', icon: Clock, badge: null },
                                     { id: 'apparatus', label: 'Apparatus', icon: Truck, badge: null },
+                                    { id: 'directory-settings', label: 'Directory', icon: Eye, badge: null },
                                     { id: 'logs', label: 'Audit Logs', icon: List, badge: null },
                                 ].map((tab) => (
                                     <button
@@ -1152,7 +1330,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         <button
                                             onClick={() => {
                                                 setEditingFirefighter(null);
-                                                setNewFirefighter({ name: '', roleId: '', stationId: null, pin: '', password: '' });
+                                                setNewFirefighter({ name: '', roleId: '', stationId: null, shiftId: null, pin: '', password: '', phoneNumber: '', startDate: '' });
                                                 setEditingPassword('');
                                             }}
                                             className="text-sm text-slate-400 hover:text-white"
@@ -1182,15 +1360,16 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                         required
                                     />
-                                    {editingFirefighter && (
-                                        <input
-                                            type="password"
-                                            placeholder="New Password (Optional)"
-                                            value={editingPassword}
-                                            onChange={(e) => setEditingPassword(e.target.value)}
-                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                        />
-                                    )}
+                                    <input
+                                        type="password"
+                                        placeholder={editingFirefighter ? 'New Password (leave blank to keep)' : 'Password (Optional)'}
+                                        value={editingFirefighter ? editingPassword : newFirefighter.password}
+                                        onChange={(e) => editingFirefighter
+                                            ? setEditingPassword(e.target.value)
+                                            : setNewFirefighter({ ...newFirefighter, password: e.target.value })
+                                        }
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
                                     <select
                                         value={editingFirefighter ? editingFirefighter.roleId : newFirefighter.roleId}
                                         onChange={(e) => editingFirefighter
@@ -1214,6 +1393,48 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         <option value="">Select Station (Optional)</option>
                                         {sortedStations.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                     </select>
+                                    <select
+                                        value={editingFirefighter ? (editingFirefighter.shiftId || '') : (newFirefighter.shiftId || '')}
+                                        onChange={(e) => editingFirefighter
+                                            ? setEditingFirefighter({ ...editingFirefighter, shiftId: e.target.value || null })
+                                            : setNewFirefighter({ ...newFirefighter, shiftId: e.target.value || null })
+                                        }
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option value="">Select Shift (Optional)</option>
+                                        {sortedShifts.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                    <input
+                                        type="tel"
+                                        placeholder="Phone Number (Optional)"
+                                        value={editingFirefighter ? (editingFirefighter.phoneNumber || '') : newFirefighter.phoneNumber}
+                                        onChange={(e) => editingFirefighter
+                                            ? setEditingFirefighter({ ...editingFirefighter, phoneNumber: e.target.value })
+                                            : setNewFirefighter({ ...newFirefighter, phoneNumber: e.target.value })
+                                        }
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                    <input
+                                        type="date"
+                                        placeholder="Start Date (Optional)"
+                                        value={editingFirefighter ? (editingFirefighter.startDate ? editingFirefighter.startDate.split('T')[0] : '') : newFirefighter.startDate}
+                                        onChange={(e) => editingFirefighter
+                                            ? setEditingFirefighter({ ...editingFirefighter, startDate: e.target.value || null })
+                                            : setNewFirefighter({ ...newFirefighter, startDate: e.target.value })
+                                        }
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                    {editingFirefighter && (
+                                        <label className="flex items-center gap-3 bg-slate-900/50 rounded-lg px-4 py-2 cursor-pointer hover:bg-slate-700/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={editingFirefighter.isAdmin || false}
+                                                onChange={(e) => setEditingFirefighter({ ...editingFirefighter, isAdmin: e.target.checked })}
+                                                className="w-5 h-5 rounded border-slate-600 text-red-500 focus:ring-red-500 bg-slate-800"
+                                            />
+                                            <span className="text-sm font-medium text-slate-300">Admin Access</span>
+                                        </label>
+                                    )}
                                     <button type="submit" disabled={loading} className="w-full sm:col-span-2 lg:col-span-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
                                         {loading ? <RefreshCw className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
                                         {editingFirefighter ? 'Update Personnel' : 'Save Personnel'}
@@ -1243,7 +1464,10 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                 <th className="pb-3 px-4">Name</th>
                                                 <th className="pb-3 px-4">Role</th>
                                                 <th className="pb-3 px-4">Station</th>
+                                                <th className="pb-3 px-4">Shift</th>
                                                 <th className="pb-3 px-4">PIN</th>
+                                                <th className="pb-3 px-4">Phone</th>
+                                                <th className="pb-3 px-4">Start Date</th>
                                                 <th className="pb-3 px-4">Status</th>
                                                 <th className="pb-3 px-4 text-right">Actions</th>
                                             </tr>
@@ -1251,12 +1475,18 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         <tbody className="divide-y divide-slate-700">
                                             {sortedFirefighters.filter(ff => showArchived || ff.isActive).map((ff) => (
                                                 <tr key={ff.id} className={`hover:bg-slate-700/50 transition-colors ${!ff.isActive ? 'opacity-60 bg-slate-900/30' : ''}`}>
-                                                    <td className="py-3 px-4 font-medium">{ff.name}</td>
+                                                    <td className="py-3 px-4 font-medium">
+                                                        {ff.name}
+                                                        {ff.isAdmin && <span className="ml-2 text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded font-bold">ADMIN</span>}
+                                                    </td>
                                                     <td className="py-3 px-4">
                                                         <span className="bg-slate-700 px-2 py-1 rounded text-xs">{ff.role?.name}</span>
                                                     </td>
                                                     <td className="py-3 px-4 text-slate-400">{ff.station?.name || '-'}</td>
+                                                    <td className="py-3 px-4 text-slate-400">{ff.shift?.name || '-'}</td>
                                                     <td className="py-3 px-4 font-mono text-slate-500">{ff.pin}</td>
+                                                    <td className="py-3 px-4 text-slate-400">{formatPhoneNumber(ff.phoneNumber) || '-'}</td>
+                                                    <td className="py-3 px-4 text-slate-400">{ff.startDate ? new Date(ff.startDate).toLocaleDateString() : '-'}</td>
                                                     <td className="py-3 px-4">
                                                         {ff.isActive ?
                                                             <span className="text-green-400 text-xs font-bold">Active</span> :
@@ -1264,28 +1494,37 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                         }
                                                     </td>
                                                     <td className="py-3 px-4 text-right space-x-2">
-                                                        <button
-                                                            onClick={() => handleToggleArchiveFirefighter(ff)}
-                                                            className="p-2 hover:bg-slate-600 rounded-lg transition-colors"
-                                                            title={ff.isActive ? "Archive User" : "Restore User"}
-                                                        >
-                                                            {ff.isActive ? <div className="w-4 h-4 border-2 border-orange-400 rounded-sm" /> : <RefreshCw className="w-4 h-4 text-green-400" />}
-                                                        </button>
-                                                        <button onClick={() => setEditingFirefighter(ff)} className="p-2 hover:bg-slate-600 rounded-lg transition-colors text-blue-400">
+                                                        <button onClick={() => setEditingFirefighter(ff)} className="p-2 hover:bg-slate-600 rounded-lg transition-colors text-blue-400" title="Edit">
                                                             <Edit2 className="h-4 w-4" />
                                                         </button>
-                                                        <button onClick={() => handleDeleteFirefighter(ff.id)} className="p-2 hover:bg-slate-600 rounded-lg transition-colors text-red-400">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </button>
                                                         <button
-                                                            onClick={() => {
-                                                                setPasswordFirefighter(ff);
-                                                                setPasswordModalOpen(true);
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const res = await fetch(`/api/firefighters/${ff.id}`, {
+                                                                        method: 'PUT',
+                                                                        headers: { 'Content-Type': 'application/json' },
+                                                                        body: JSON.stringify({ name: ff.name, roleId: ff.roleId, stationId: ff.stationId, pin: ff.pin, isAdmin: !ff.isAdmin }),
+                                                                    });
+                                                                    if (res.ok) {
+                                                                        setFirefighters(firefighters.map(f => f.id === ff.id ? { ...f, isAdmin: !f.isAdmin } : f));
+                                                                        setMessage(`${ff.name} ${!ff.isAdmin ? 'granted' : 'revoked'} admin access.`);
+                                                                    }
+                                                                } catch { setMessage('Failed to toggle admin'); }
                                                             }}
-                                                            className="p-2 hover:bg-slate-600 rounded-lg transition-colors text-yellow-400"
-                                                            title="Set Password"
+                                                            className={`p-2 hover:bg-slate-600 rounded-lg transition-colors ${ff.isAdmin ? 'text-red-400' : 'text-slate-500'}`}
+                                                            title={ff.isAdmin ? 'Revoke Admin' : 'Grant Admin'}
                                                         >
                                                             <Shield className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleToggleArchiveFirefighter(ff)}
+                                                            className={`p-2 hover:bg-slate-600 rounded-lg transition-colors ${ff.isActive ? 'text-orange-400' : 'text-green-400'}`}
+                                                            title={ff.isActive ? 'Archive User' : 'Restore User'}
+                                                        >
+                                                            {ff.isActive ? <Archive className="h-4 w-4" /> : <RefreshCw className="h-4 w-4" />}
+                                                        </button>
+                                                        <button onClick={() => handleDeleteFirefighter(ff.id)} className="p-2 hover:bg-slate-600 rounded-lg transition-colors text-red-400" title="Delete">
+                                                            <Trash2 className="h-4 w-4" />
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -1313,18 +1552,6 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         }
                                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none"
                                     />
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={editingRole ? editingRole.isAdmin : newRole.isAdmin}
-                                            onChange={(e) => editingRole
-                                                ? setEditingRole({ ...editingRole, isAdmin: e.target.checked })
-                                                : setNewRole({ ...newRole, isAdmin: e.target.checked })
-                                            }
-                                            className="w-5 h-5 rounded border-slate-700 bg-slate-900 text-purple-500 focus:ring-purple-500"
-                                        />
-                                        <span className="text-slate-300">Is Admin?</span>
-                                    </label>
                                     <div className="flex gap-2">
                                         <button disabled={loading} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50">
                                             {loading ? 'Saving...' : (editingRole ? 'Update Role' : 'Create Role')}
@@ -1343,12 +1570,11 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             </div>
                             <div className="lg:col-span-2 bg-slate-800 rounded-2xl p-6 border border-slate-700">
                                 <table className="w-full text-left">
-                                    <thead><tr className="border-b border-slate-700 text-slate-400 text-sm"><th className="pb-3 px-4">Name</th><th className="pb-3 px-4">Type</th><th className="pb-3 px-4">Actions</th></tr></thead>
+                                    <thead><tr className="border-b border-slate-700 text-slate-400 text-sm"><th className="pb-3 px-4">Name</th><th className="pb-3 px-4">Actions</th></tr></thead>
                                     <tbody className="divide-y divide-slate-700">
                                         {sortedRoles.map((r) => (
                                             <tr key={r.id} className="hover:bg-slate-700/50">
                                                 <td className="py-3 px-4 font-medium">{r.name}</td>
-                                                <td className="py-3 px-4">{r.isAdmin ? <span className="text-red-400 font-bold text-xs border border-red-500/30 px-2 py-0.5 rounded">ADMIN</span> : <span className="text-slate-500 text-xs">STANDARD</span>}</td>
                                                 <td className="py-3 px-4 flex gap-2">
                                                     <button onClick={() => setEditingRole(r)} className="text-purple-400 hover:text-purple-300 text-sm font-medium">Edit</button>
                                                     <button onClick={() => handleDeleteRole(r.id)} className="text-red-400 hover:text-red-300 text-sm font-medium">Delete</button>
@@ -1418,6 +1644,215 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* SHIFTS TAB */}
+                    {activeTab === 'shifts' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 h-fit">
+                                <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Clock className="text-cyan-400" /> {editingShift ? 'Edit Shift' : 'New Shift'}</h2>
+                                <form onSubmit={editingShift ? handleUpdateShift : handleAddShift} className="space-y-4">
+                                    <input
+                                        required
+                                        placeholder="Shift Name (e.g., A-Shift)"
+                                        value={editingShift ? editingShift.name : newShift.name}
+                                        onChange={(e) => editingShift
+                                            ? setEditingShift({ ...editingShift, name: e.target.value })
+                                            : setNewShift({ ...newShift, name: e.target.value })
+                                        }
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500 outline-none"
+                                    />
+                                    <input
+                                        placeholder="Description (Optional)"
+                                        value={editingShift ? (editingShift.description || '') : newShift.description}
+                                        onChange={(e) => editingShift
+                                            ? setEditingShift({ ...editingShift, description: e.target.value })
+                                            : setNewShift({ ...newShift, description: e.target.value })
+                                        }
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-cyan-500 outline-none"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button disabled={loading} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50">
+                                            {loading ? 'Saving...' : (editingShift ? 'Update Shift' : 'Create Shift')}
+                                        </button>
+                                        {editingShift && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingShift(null)}
+                                                className="bg-slate-700 hover:bg-slate-600 text-white px-4 rounded-xl"
+                                            >
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </div>
+                                </form>
+                            </div>
+                            <div className="lg:col-span-2 bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                                <table className="w-full text-left">
+                                    <thead><tr className="border-b border-slate-700 text-slate-400 text-sm"><th className="pb-3 px-4">Name</th><th className="pb-3 px-4">Description</th><th className="pb-3 px-4">Actions</th></tr></thead>
+                                    <tbody className="divide-y divide-slate-700">
+                                        {sortedShifts.map((s) => (
+                                            <tr key={s.id} className="hover:bg-slate-700/50">
+                                                <td className="py-3 px-4 font-medium">{s.name}</td>
+                                                <td className="py-3 px-4 text-slate-400">{s.description || '-'}</td>
+                                                <td className="py-3 px-4 flex gap-2">
+                                                    <button onClick={() => setEditingShift(s)} className="text-cyan-400 hover:text-cyan-300 text-sm font-medium">Edit</button>
+                                                    <button onClick={() => handleDeleteShift(s.id)} className="text-red-400 hover:text-red-300 text-sm font-medium">Delete</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {sortedShifts.length === 0 && (
+                                            <tr><td colSpan={3} className="py-8 text-center text-slate-500">No shifts created yet.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DIRECTORY SETTINGS TAB */}
+                    {activeTab === 'directory-settings' && (
+                        <div className="space-y-8">
+                            {/* Column Visibility */}
+                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                                <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><Eye className="text-violet-400" /> Directory Column Visibility</h2>
+                                <p className="text-slate-400 text-sm mb-4">Choose which columns are visible in the public firefighter directory.</p>
+                                {directorySettings ? (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                            {[
+                                                { key: 'showRadioId', label: 'Radio ID' },
+                                                { key: 'showName', label: 'Name' },
+                                                { key: 'showRole', label: 'Role' },
+                                                { key: 'showStation', label: 'Station' },
+                                                { key: 'showShift', label: 'Shift' },
+                                                { key: 'showPhone', label: 'Phone Number' },
+                                                { key: 'showStartDate', label: 'Start Date' },
+                                            ].map((col) => (
+                                                <label key={col.key} className="flex items-center gap-3 bg-slate-900/50 rounded-lg px-4 py-3 cursor-pointer hover:bg-slate-700/50 transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={(directorySettings as any)[col.key]}
+                                                        onChange={(e) => setDirectorySettings({ ...directorySettings, [col.key]: e.target.checked })}
+                                                        className="w-5 h-5 rounded border-slate-600 text-violet-500 focus:ring-violet-500 bg-slate-800"
+                                                    />
+                                                    <span className="text-sm font-medium">{col.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        <button
+                                            onClick={handleSaveDirectorySettings}
+                                            disabled={loading}
+                                            className="bg-violet-600 hover:bg-violet-500 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                                        >
+                                            {loading ? 'Saving...' : 'Save Settings'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-500">Loading settings...</p>
+                                )}
+                            </div>
+
+                            {/* Role Display Order */}
+                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Shield className="text-amber-400" /> Role Display Order</h2>
+                                <p className="text-slate-400 text-sm mb-4">Drag and drop roles to set their display priority in the directory. Top = highest priority.</p>
+                                {directorySettings ? (() => {
+                                    // Build ordered list: roles in roleOrder first, then any remaining roles
+                                    const orderedRoleIds: string[] = directorySettings.roleOrder || [];
+                                    const orderedRoles = [
+                                        ...orderedRoleIds.map(id => roles.find(r => r.id === id)).filter(Boolean),
+                                        ...roles.filter(r => !orderedRoleIds.includes(r.id)),
+                                    ] as Role[];
+
+                                    return (
+                                        <div className="space-y-2">
+                                            {orderedRoles.map((role, index) => (
+                                                <div
+                                                    key={role.id}
+                                                    draggable
+                                                    onDragStart={(e) => {
+                                                        e.dataTransfer.setData('text/plain', role.id);
+                                                        e.dataTransfer.effectAllowed = 'move';
+                                                        (e.target as HTMLElement).style.opacity = '0.5';
+                                                    }}
+                                                    onDragEnd={(e) => {
+                                                        (e.target as HTMLElement).style.opacity = '1';
+                                                    }}
+                                                    onDragOver={(e) => {
+                                                        e.preventDefault();
+                                                        e.dataTransfer.dropEffect = 'move';
+                                                        (e.currentTarget as HTMLElement).classList.add('ring-2', 'ring-amber-400/50');
+                                                    }}
+                                                    onDragLeave={(e) => {
+                                                        (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-amber-400/50');
+                                                    }}
+                                                    onDrop={(e) => {
+                                                        e.preventDefault();
+                                                        (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-amber-400/50');
+                                                        const draggedId = e.dataTransfer.getData('text/plain');
+                                                        if (draggedId === role.id) return;
+                                                        const currentIds = orderedRoles.map(r => r.id);
+                                                        const fromIdx = currentIds.indexOf(draggedId);
+                                                        const toIdx = currentIds.indexOf(role.id);
+                                                        if (fromIdx < 0) return;
+                                                        const newOrder = [...currentIds];
+                                                        newOrder.splice(fromIdx, 1);
+                                                        newOrder.splice(toIdx, 0, draggedId);
+                                                        setDirectorySettings({ ...directorySettings, roleOrder: newOrder });
+                                                    }}
+                                                    className="flex items-center gap-4 bg-slate-900/50 rounded-lg px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-slate-700/50 transition-all select-none border border-transparent"
+                                                >
+                                                    <span className="text-slate-500 text-xs font-mono w-5 text-center">{index + 1}</span>
+                                                    <svg className="w-4 h-4 text-slate-500 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                                                        <circle cx="5" cy="3" r="1.5" /><circle cx="11" cy="3" r="1.5" />
+                                                        <circle cx="5" cy="8" r="1.5" /><circle cx="11" cy="8" r="1.5" />
+                                                        <circle cx="5" cy="13" r="1.5" /><circle cx="11" cy="13" r="1.5" />
+                                                    </svg>
+                                                    <span className="font-medium">{role.name}</span>
+                                                </div>
+                                            ))}
+                                            <button
+                                                onClick={handleSaveDirectorySettings}
+                                                disabled={loading}
+                                                className="mt-4 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                                            >
+                                                {loading ? 'Saving...' : 'Save Role Order'}
+                                            </button>
+                                        </div>
+                                    );
+                                })() : (
+                                    <p className="text-slate-500">Loading settings...</p>
+                                )}
+                            </div>
+
+                            {/* Hidden from Directory */}
+                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><EyeOff className="text-rose-400" /> Directory Visibility per Firefighter</h2>
+                                <p className="text-slate-400 text-sm mb-4">Toggle which firefighters appear in the public directory. Hidden firefighters can still clock in/out and use all other features.</p>
+                                <div className="space-y-2">
+                                    {firefighters.filter(f => f.isActive).sort((a, b) => a.name.localeCompare(b.name)).map((ff) => (
+                                        <div key={ff.id} className="flex items-center justify-between bg-slate-900/50 rounded-lg px-4 py-3 hover:bg-slate-700/50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-medium">{ff.name}</span>
+                                                <span className="text-xs text-slate-400">{ff.role?.name}</span>
+                                                {ff.station && <span className="text-xs text-slate-500">• {ff.station.name}</span>}
+                                            </div>
+                                            <button
+                                                onClick={() => handleToggleHiddenFromDirectory(ff)}
+                                                disabled={loading}
+                                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${ff.isHiddenFromDirectory
+                                                    ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
+                                                    : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                                                    }`}
+                                            >
+                                                {ff.isHiddenFromDirectory ? <><EyeOff className="w-4 h-4" /> Hidden</> : <><Eye className="w-4 h-4" /> Visible</>}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/utils';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { logAdminAction } from '@/lib/logger';
@@ -7,14 +8,23 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     try {
         const { id } = await params;
         const body = await request.json();
-        const { name, roleId, stationId, pin, isActive, password } = body;
+        const { name, roleId, stationId, shiftId, pin, isActive, password, phoneNumber, startDate, isHiddenFromDirectory, isAdmin } = body;
+
+        if (phoneNumber !== undefined && !isValidPhoneNumber(phoneNumber)) {
+            return NextResponse.json({ error: 'Invalid phone number format. Must be 10 or 11 digits.' }, { status: 400 });
+        }
 
         const updateData: any = {
             name,
             roleId,
             stationId: stationId || null,
+            shiftId: shiftId || null,
             pin,
             isActive: isActive !== undefined ? isActive : undefined,
+            isAdmin: isAdmin !== undefined ? isAdmin : undefined,
+            phoneNumber: phoneNumber !== undefined ? formatPhoneNumber(phoneNumber) : undefined,
+            startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
+            isHiddenFromDirectory: isHiddenFromDirectory !== undefined ? isHiddenFromDirectory : undefined,
         };
 
         // If password is provided, hash it
@@ -29,7 +39,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         const updatedFirefighter = await prisma.firefighter.update({
             where: { id },
             data: updateData,
-            include: { role: true },
+            include: { role: true, station: true, shift: true },
         });
 
         await logAdminAction(

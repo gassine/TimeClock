@@ -4,10 +4,10 @@ const prisma = new PrismaClient()
 
 async function main() {
     const roles = [
-        { name: 'Firefighter', isAdmin: false },
-        { name: 'Captain', isAdmin: false },
-        { name: 'Lieutenant', isAdmin: false },
-        { name: 'Admin', isAdmin: true },
+        { name: 'Firefighter' },
+        { name: 'Captain' },
+        { name: 'Lieutenant' },
+        { name: 'Chief' },
     ]
 
     for (const role of roles) {
@@ -38,16 +38,17 @@ async function main() {
     console.log('Issue Statuses seeded successfully')
 
     // Create Default Admin User
-    const adminRole = await prisma.role.findUnique({ where: { name: 'Admin' } })
-    if (adminRole) {
+    const firefighterRole = await prisma.role.findUnique({ where: { name: 'Firefighter' } })
+    if (firefighterRole) {
         await prisma.firefighter.upsert({
             where: { pin: '0000' }, // Default Admin PIN
             update: {},
             create: {
                 name: 'System Admin',
                 pin: '0000',
-                roleId: adminRole.id,
+                roleId: firefighterRole.id,
                 isActive: true,
+                isAdmin: true, // Admin access is now per-user
             },
         })
         console.log('Default Admin user seeded (PIN: 0000)')

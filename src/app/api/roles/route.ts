@@ -17,12 +17,11 @@ import { logAdminAction } from '@/lib/logger';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { name, isAdmin } = body;
+        const { name } = body;
 
         const role = await prisma.role.create({
             data: {
                 name,
-                isAdmin: isAdmin || false,
             },
         });
 
@@ -34,7 +33,10 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json(role, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            return NextResponse.json({ error: 'A role with this name already exists' }, { status: 409 });
+        }
         return NextResponse.json({ error: 'Failed to create role' }, { status: 500 });
     }
 }
