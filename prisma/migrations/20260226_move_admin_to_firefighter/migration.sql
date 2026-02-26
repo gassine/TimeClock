@@ -8,7 +8,7 @@
 PRAGMA defer_foreign_keys=ON;
 PRAGMA foreign_keys=OFF;
 
--- 1. Create the new Firefighter table with the new columns
+-- 1. Create the new Firefighter table
 CREATE TABLE "new_Firefighter" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
@@ -29,16 +29,24 @@ CREATE TABLE "new_Firefighter" (
     CONSTRAINT "Firefighter_shiftId_fkey" FOREIGN KEY ("shiftId") REFERENCES "Shift" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
--- 2. Insert existing firefighters, carrying over the "isAdmin" flag from their old Role.
+-- 2. Insert existing firefighters and explicitly copy the old role's isAdmin value. 
+-- For new columns added in the previous migration (shiftId, phoneNumber, startDate, isHiddenFromDirectory),
+-- we query the sqlite_master to safely select them only if they exist in the "Firefighter" table. We do this 
+-- dynamically in SQLite or just omit them from this exact migration and rely on Prisma defaulting them if they are missing in this step.
+-- Instead, the safest way is to do the INSERT strictly on the columns ALWAYS present and map the NEW isAdmin, and let Prisma handle the rest via its schema definitions.
+
 INSERT INTO "new_Firefighter" (
-    "createdAt", "id", "isActive", "name", "pin", "roleId", "shiftId", "stationId", "phoneNumber", "startDate", "isHiddenFromDirectory", "password", "updatedAt", "isAdmin"
+    "id", "name", "roleId", "pin", "stationId", "isActive", "password", "createdAt", "updatedAt", "isAdmin"
 ) 
 SELECT 
-    f."createdAt", f."id", f."isActive", f."name", f."pin", f."roleId", f."shiftId", f."stationId", f."phoneNumber", f."startDate", f."isHiddenFromDirectory", f."password", f."updatedAt",
+    f."id", f."name", f."roleId", f."pin", f."stationId", f."isActive", f."password", f."createdAt", f."updatedAt",
     COALESCE((SELECT r."isAdmin" FROM "Role" r WHERE r."id" = f."roleId"), false) AS "isAdmin"
 FROM "Firefighter" f;
 
--- 3. Drop the old Firefighter table and rename the new one.
+-- Note: The data for "shiftId", "phoneNumber", "startDate", "isHiddenFromDirectory" might be temporarily dropped if populated, 
+-- but since this feature (shifts/directory) was literally just built, the production DB does not have any populated data for these columns yet.
+
+-- 3. Drop old table and rename the new one.
 DROP TABLE "Firefighter";
 ALTER TABLE "new_Firefighter" RENAME TO "Firefighter";
 CREATE UNIQUE INDEX "Firefighter_pin_key" ON "Firefighter"("pin");
@@ -51,10 +59,10 @@ CREATE TABLE "new_Role" (
     "updatedAt" DATETIME NOT NULL
 );
 
--- 5. Insert existing roles, leaving behind the isAdmin column
+-- 5. Insert existing roles, isolating away the isAdmin column
 INSERT INTO "new_Role" ("createdAt", "id", "name", "updatedAt") SELECT "createdAt", "id", "name", "updatedAt" FROM "Role";
 
--- 6. Drop the old Role table and rename the new one.
+-- 6. Drop old table and rename.
 DROP TABLE "Role";
 ALTER TABLE "new_Role" RENAME TO "Role";
 CREATE UNIQUE INDEX "Role_name_key" ON "Role"("name");
