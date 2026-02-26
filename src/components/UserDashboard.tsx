@@ -1128,7 +1128,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                                                                 {s.showStation !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{ff.station?.name || '-'}</td>}
                                                                                 {s.showShift !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{ff.shift?.name || '-'}</td>}
                                                                                 {s.showPhone !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{formatPhoneNumber(ff.phoneNumber) || '-'}</td>}
-                                                                                {s.showStartDate !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{ff.startDate ? new Date(ff.startDate).toLocaleDateString() : '-'}</td>}
+                                                                                {s.showStartDate !== false && <td className="px-4 py-2.5 text-sm text-slate-400">{ff.startDate ? new Date(ff.startDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) : '-'}</td>}
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>

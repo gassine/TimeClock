@@ -1486,7 +1486,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                     <td className="py-3 px-4 text-slate-400">{ff.shift?.name || '-'}</td>
                                                     <td className="py-3 px-4 font-mono text-slate-500">{ff.pin}</td>
                                                     <td className="py-3 px-4 text-slate-400">{formatPhoneNumber(ff.phoneNumber) || '-'}</td>
-                                                    <td className="py-3 px-4 text-slate-400">{ff.startDate ? new Date(ff.startDate).toLocaleDateString() : '-'}</td>
+                                                    <td className="py-3 px-4 text-slate-400">{ff.startDate ? new Date(ff.startDate).toLocaleDateString('en-US', { timeZone: 'UTC' }) : '-'}</td>
                                                     <td className="py-3 px-4">
                                                         {ff.isActive ?
                                                             <span className="text-green-400 text-xs font-bold">Active</span> :
