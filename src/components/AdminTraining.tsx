@@ -174,59 +174,60 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
         return acc;
     }, {});
 
-    const handleDragStart = (postId: string, categoryId: string) => {
+    const handleDragStart = (e: React.DragEvent, postId: string, categoryId: string) => {
         dragItem.current = postId;
         setDragCategoryId(categoryId);
+        // Set a clean drag image — use the whole row element
+        e.dataTransfer.effectAllowed = 'move';
+        const target = e.currentTarget as HTMLElement;
+        target.style.opacity = '0.5';
+        // Use the element itself as the drag image for a cleaner look
+        e.dataTransfer.setDragImage(target, 20, 20);
     };
 
-    const handleDragOver = (e: React.DragEvent, postId: string) => {
-        e.preventDefault();
-        dragOverItem.current = postId;
-    };
+    const handleDragEnd = (e: React.DragEvent) => {
+        const target = e.currentTarget as HTMLElement;
+        target.style.opacity = '1';
 
-    const handleDrop = async (targetCategoryId: string) => {
-        if (!dragItem.current || !dragOverItem.current || dragCategoryId !== targetCategoryId) {
-            dragItem.current = null;
-            dragOverItem.current = null;
-            setDragCategoryId(null);
-            return;
-        }
-
-        const group = postsByCategory[targetCategoryId];
-        if (!group) return;
-
-        const currentPosts = [...group.posts];
-        const dragIdx = currentPosts.findIndex(p => p.id === dragItem.current);
-        const dropIdx = currentPosts.findIndex(p => p.id === dragOverItem.current);
-
-        if (dragIdx < 0 || dropIdx < 0) return;
-
-        const [movedItem] = currentPosts.splice(dragIdx, 1);
-        currentPosts.splice(dropIdx, 0, movedItem);
-
-        // Optimistically update state
-        const newPosts = posts.map(p => {
-            const newOrder = currentPosts.findIndex(cp => cp.id === p.id);
-            if (newOrder >= 0) return { ...p, order: newOrder };
-            return p;
-        });
-        setPosts(newPosts);
-
-        // Persist reorder to API
-        try {
-            await fetch('/api/training/posts', {
+        // Fire-and-forget: persist the current order to the API
+        if (dragCategoryId && postsByCategory[dragCategoryId]) {
+            const orderedIds = postsByCategory[dragCategoryId].posts.map(p => p.id);
+            fetch('/api/training/posts', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(currentPosts.map(p => p.id))
+                body: JSON.stringify(orderedIds)
+            }).catch(err => {
+                console.error('Reorder failed', err);
+                fetchPosts();
             });
-        } catch (e) {
-            console.error('Reorder failed', e);
-            fetchPosts(); // Revert on failure
         }
 
         dragItem.current = null;
         dragOverItem.current = null;
         setDragCategoryId(null);
+    };
+
+    const handleDragEnter = (e: React.DragEvent, postId: string, categoryId: string) => {
+        e.preventDefault();
+        if (!dragItem.current || dragItem.current === postId || dragCategoryId !== categoryId) return;
+
+        // Directly rearrange the posts array for instant visual feedback
+        setPosts(prev => {
+            const newPosts = [...prev];
+            const dragIdx = newPosts.findIndex(p => p.id === dragItem.current);
+            const hoverIdx = newPosts.findIndex(p => p.id === postId);
+            if (dragIdx < 0 || hoverIdx < 0) return prev;
+
+            // Remove dragged item and insert at hover position
+            const [movedItem] = newPosts.splice(dragIdx, 1);
+            newPosts.splice(hoverIdx, 0, movedItem);
+            return newPosts;
+        });
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
     };
 
     if (loading) return <div className="text-center p-8 text-slate-400">Loading Training Module...</div>;
@@ -362,10 +363,12 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
                                             <div
                                                 key={post.id}
                                                 draggable
-                                                onDragStart={() => handleDragStart(post.id, catId)}
-                                                onDragOver={(e) => handleDragOver(e, post.id)}
-                                                onDrop={() => handleDrop(catId)}
-                                                className={`p-4 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center cursor-grab active:cursor-grabbing transition-colors ${post.isDeleted ? 'bg-red-900/10' : post.status === 'ARCHIVED' ? 'bg-slate-800/40' : 'hover:bg-slate-700/20'}`}
+                                                onDragStart={(e) => handleDragStart(e, post.id, catId)}
+                                                onDragEnter={(e) => handleDragEnter(e, post.id, catId)}
+                                                onDragOver={handleDragOver}
+                                                onDragEnd={handleDragEnd}
+                                                className={`p-4 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center select-none transition-all duration-150 ${dragItem.current === post.id ? 'opacity-50 scale-[0.98] bg-blue-900/20 border-l-2 border-blue-500' : ''} ${post.isDeleted ? 'bg-red-900/10' : post.status === 'ARCHIVED' ? 'bg-slate-800/40' : 'hover:bg-slate-700/20'}`}
+                                                style={{ cursor: 'grab' }}
                                             >
                                                 <div className="flex items-center gap-3 flex-1 min-w-0">
                                                     <GripVertical className="w-4 h-4 text-slate-500 shrink-0" />
