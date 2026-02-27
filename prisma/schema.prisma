@@ -96,6 +96,7 @@ model DirectorySettings {
   showPhone      Boolean @default(true)
   showStartDate  Boolean @default(true)
   roleOrder      String  @default("[]") // JSON array of role IDs in priority order
+  stationOrder   String  @default("[]") // JSON array of station IDs in priority order
 }
 
 model Apparatus {

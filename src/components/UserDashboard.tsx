@@ -1065,9 +1065,28 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                 stationGroups[stationName].push(ff);
                             });
 
+                            const stationOrder: string[] = dirSettings?.stationOrder || [];
+
                             const stationNames = Object.keys(stationGroups).sort((a, b) => {
                                 if (a === 'Unassigned') return 1;
                                 if (b === 'Unassigned') return -1;
+
+                                // To sort by the Custom Station Order array, we need the Station ID, 
+                                // but we grouped by Station Name. Let's find the ID for these names:
+                                const idA = stationGroups[a][0]?.station?.id;
+                                const idB = stationGroups[b][0]?.station?.id;
+
+                                const idxA = idA ? stationOrder.indexOf(idA) : -1;
+                                const idxB = idB ? stationOrder.indexOf(idB) : -1;
+
+                                // If both are in the configured order array, sort by priority
+                                if (idxA >= 0 && idxB >= 0) return idxA - idxB;
+                                // If only A is configured, A goes first
+                                if (idxA >= 0) return -1;
+                                // If only B is configured, B goes first
+                                if (idxB >= 0) return 1;
+
+                                // If neither are explicitly ordered, fallback to alphabetical
                                 return a.localeCompare(b);
                             });
 

@@ -49,6 +49,7 @@ type DirectorySettings = {
     showPhone: boolean;
     showStartDate: boolean;
     roleOrder: string[];
+    stationOrder: string[];
 };
 
 type Firefighter = {
@@ -1820,6 +1821,79 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                 className="mt-4 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
                                             >
                                                 {loading ? 'Saving...' : 'Save Role Order'}
+                                            </button>
+                                        </div>
+                                    );
+                                })() : (
+                                    <p className="text-slate-500">Loading settings...</p>
+                                )}
+                            </div>
+
+                            {/* Station Display Order */}
+                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><MapPin className="text-amber-400" /> Station Display Order</h2>
+                                <p className="text-slate-400 text-sm mb-4">Drag and drop stations to set their display priority in the directory grouped view. Top = highest priority.</p>
+                                {directorySettings ? (() => {
+                                    // Build ordered list: stations in stationOrder first, then any remaining stations
+                                    const orderedStationIds: string[] = directorySettings.stationOrder || [];
+                                    const orderedStations = [
+                                        ...orderedStationIds.map(id => stations.find(s => s.id === id)).filter(Boolean),
+                                        ...stations.filter(s => !orderedStationIds.includes(s.id)),
+                                    ] as Station[];
+
+                                    return (
+                                        <div className="space-y-2">
+                                            {orderedStations.map((station, index) => (
+                                                <div
+                                                    key={station.id}
+                                                    draggable
+                                                    onDragStart={(e) => {
+                                                        e.dataTransfer.setData('text/plain', station.id);
+                                                        e.dataTransfer.effectAllowed = 'move';
+                                                        (e.target as HTMLElement).style.opacity = '0.5';
+                                                    }}
+                                                    onDragEnd={(e) => {
+                                                        (e.target as HTMLElement).style.opacity = '1';
+                                                    }}
+                                                    onDragOver={(e) => {
+                                                        e.preventDefault();
+                                                        e.dataTransfer.dropEffect = 'move';
+                                                        (e.currentTarget as HTMLElement).classList.add('ring-2', 'ring-amber-400/50');
+                                                    }}
+                                                    onDragLeave={(e) => {
+                                                        (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-amber-400/50');
+                                                    }}
+                                                    onDrop={(e) => {
+                                                        e.preventDefault();
+                                                        (e.currentTarget as HTMLElement).classList.remove('ring-2', 'ring-amber-400/50');
+                                                        const draggedId = e.dataTransfer.getData('text/plain');
+                                                        if (draggedId === station.id) return;
+                                                        const currentIds = orderedStations.map(s => s.id);
+                                                        const fromIdx = currentIds.indexOf(draggedId);
+                                                        const toIdx = currentIds.indexOf(station.id);
+                                                        if (fromIdx < 0) return;
+                                                        const newOrder = [...currentIds];
+                                                        newOrder.splice(fromIdx, 1);
+                                                        newOrder.splice(toIdx, 0, draggedId);
+                                                        setDirectorySettings({ ...directorySettings, stationOrder: newOrder });
+                                                    }}
+                                                    className="flex items-center gap-4 bg-slate-900/50 rounded-lg px-4 py-3 cursor-grab active:cursor-grabbing hover:bg-slate-700/50 transition-all select-none border border-transparent"
+                                                >
+                                                    <span className="text-slate-500 text-xs font-mono w-5 text-center">{index + 1}</span>
+                                                    <svg className="w-4 h-4 text-slate-500 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+                                                        <circle cx="5" cy="3" r="1.5" /><circle cx="11" cy="3" r="1.5" />
+                                                        <circle cx="5" cy="8" r="1.5" /><circle cx="11" cy="8" r="1.5" />
+                                                        <circle cx="5" cy="13" r="1.5" /><circle cx="11" cy="13" r="1.5" />
+                                                    </svg>
+                                                    <span className="font-medium">{station.name}</span>
+                                                </div>
+                                            ))}
+                                            <button
+                                                onClick={handleSaveDirectorySettings}
+                                                disabled={loading}
+                                                className="mt-4 bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:opacity-50"
+                                            >
+                                                {loading ? 'Saving...' : 'Save Station Order'}
                                             </button>
                                         </div>
                                     );

@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
     showPhone: true,
     showStartDate: true,
     roleOrder: '[]',
+    stationOrder: '[]',
 };
 
 export async function GET() {
@@ -22,6 +23,7 @@ export async function GET() {
         return NextResponse.json({
             ...settings,
             roleOrder: JSON.parse(settings.roleOrder || '[]'),
+            stationOrder: JSON.parse(settings.stationOrder || '[]'),
         });
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch directory settings' }, { status: 500 });
@@ -33,7 +35,7 @@ export async function PUT(request: Request) {
         const body = await request.json();
         const {
             showRadioId, showName, showRole, showStation,
-            showShift, showPhone, showStartDate, roleOrder,
+            showShift, showPhone, showStartDate, roleOrder, stationOrder,
         } = body;
 
         let settings = await prisma.directorySettings.findFirst();
@@ -47,6 +49,7 @@ export async function PUT(request: Request) {
             showPhone: showPhone ?? true,
             showStartDate: showStartDate ?? true,
             roleOrder: JSON.stringify(Array.isArray(roleOrder) ? roleOrder : []),
+            stationOrder: JSON.stringify(Array.isArray(stationOrder) ? stationOrder : []),
         };
 
         if (settings) {
@@ -63,6 +66,7 @@ export async function PUT(request: Request) {
         return NextResponse.json({
             ...settings,
             roleOrder: JSON.parse(settings.roleOrder || '[]'),
+            stationOrder: JSON.parse(settings.stationOrder || '[]'),
         });
     } catch (error) {
         return NextResponse.json({ error: 'Failed to update directory settings' }, { status: 500 });
