@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users } from 'lucide-react';
+import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users, BookOpen } from 'lucide-react';
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import UserTruckChecks from './UserTruckChecks';
+import UserTraining from './UserTraining';
 import { format } from 'date-fns';
 import { formatPhoneNumber } from '@/lib/utils';
 
@@ -44,7 +45,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
     const [editingIssue, setEditingIssue] = useState<{ id: string, title: string, description: string } | null>(null);
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks' | 'directory'>('timesheet');
+    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks' | 'directory' | 'training'>('timesheet');
 
     // Directory State
     const [directoryData, setDirectoryData] = useState<any[]>([]);
@@ -492,6 +493,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                 >
                     <Users className="w-5 h-5" />
                     Directory
+                </button>
+                <button
+                    onClick={() => setActiveTab('training')}
+                    className={`pb-3 px-2 font-medium whitespace-nowrap transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'training' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}`}
+                >
+                    <BookOpen className="w-5 h-5 text-blue-400" />
+                    Knowledge Base
                 </button>
                 <button
                     onClick={() => setActiveTab('issues')}
@@ -1038,6 +1046,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             {activeTab === 'truck-checks' && (
                 <div className="animate-in fade-in duration-300">
                     <UserTruckChecks user={user} />
+                </div>
+            )}
+
+            {/* TRAINING TAB */}
+            {activeTab === 'training' && (
+                <div className="animate-in fade-in duration-300">
+                    <UserTraining currentUser={user} />
                 </div>
             )}
 

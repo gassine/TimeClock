@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import jwt from 'jsonwebtoken';
+import { prisma } from '@/lib/prisma';
 import UserDashboard from '@/components/UserDashboard';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-this';
@@ -17,6 +18,15 @@ export default async function DashboardPage() {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+        const dbUser = await prisma.firefighter.findUnique({
+            where: { id: decoded.id },
+            select: { roleId: true }
+        });
+
+        if (dbUser) {
+            decoded.roleId = dbUser.roleId;
+        }
 
         // If user is admin and tries to access this page, accessing via Login Button...
         // The Login Button redirects Admins to /admin.
