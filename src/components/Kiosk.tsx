@@ -68,7 +68,7 @@ export default function Kiosk() {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginPin, setLoginPin] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
-    const [loginStep, setLoginStep] = useState<'pin' | 'password'>('pin');
+    const [loginStep, setLoginStep] = useState<'pin' | 'password' | 'admin-select'>('pin');
     const [loginError, setLoginError] = useState('');
     const [loginName, setLoginName] = useState('');
 
@@ -89,22 +89,6 @@ export default function Kiosk() {
 
             if (!res.ok) {
                 if (res.status === 401 && data.error === 'Password required') {
-                    // Start Password Step
-                    // Ideally we should know name here to show "Hello X"
-                    // But API rejected it.
-                    // We need a way to check if password is required separate from auth?
-                    // Or standard login flow: 
-                    // 1. Enter PIN -> Submit.
-                    // 2. Server says "401 Password required".
-                    // 3. UI shows password field.
-                    // 4. Submit PIN + Password.
-
-                    // Actually, my API logic returns 401 if password required but not provided.
-                    // But it doesn't return the name.
-                    // It's better if the API returns a specific code or I fetch user status first?
-                    // Or I just try to login.
-
-                    // Let's rely on the error message.
                     setLoginStep('password');
                     return;
                 }
@@ -113,7 +97,9 @@ export default function Kiosk() {
 
             // Success
             if (data.user.isAdmin) {
-                window.location.href = '/admin';
+                // Instead of auto-routing, show the router choice modal step
+                setLoginName(data.user.name);
+                setLoginStep('admin-select');
             } else {
                 window.location.href = '/dashboard';
             }
@@ -278,7 +264,7 @@ export default function Kiosk() {
                                     Next
                                 </button>
                             </form>
-                        ) : (
+                        ) : loginStep === 'password' ? (
                             <form onSubmit={(e) => {
                                 e.preventDefault();
                                 handleLoginSubmit();
@@ -308,6 +294,30 @@ export default function Kiosk() {
                                     Log In
                                 </button>
                             </form>
+                        ) : (
+                            <div className="space-y-4 text-center">
+                                <p className="text-slate-300 mb-6">Hello, <span className="font-bold text-white">{loginName}</span>.<br /> Where would you like to go?</p>
+
+                                <button
+                                    onClick={() => window.location.href = '/dashboard'}
+                                    className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white font-bold py-4 rounded-xl transition-colors shadow-lg"
+                                >
+                                    User Dashboard
+                                </button>
+
+                                <div className="relative flex items-center py-2">
+                                    <div className="flex-grow border-t border-slate-700"></div>
+                                    <span className="flex-shrink-0 mx-4 text-slate-500 text-sm font-medium">OR</span>
+                                    <div className="flex-grow border-t border-slate-700"></div>
+                                </div>
+
+                                <button
+                                    onClick={() => window.location.href = '/admin'}
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-blue-900/20"
+                                >
+                                    Admin Dashboard
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>

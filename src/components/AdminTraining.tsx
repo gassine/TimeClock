@@ -78,6 +78,25 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
         }
     };
 
+    const handleDeleteCategory = async (id: string, name: string) => {
+        if (!confirm(`Are you sure you want to permanently delete the category "${name}"? This will also delete ALL posts and replies within it!`)) return;
+        try {
+            const res = await fetch(`/api/training/categories?id=${id}`, {
+                method: 'DELETE',
+            });
+            if (res.ok) {
+                fetchCategories();
+                fetchPosts(); // Refresh posts since some may have been deleted
+            } else {
+                const data = await res.json();
+                alert(`Error: ${data.error || 'Failed to delete category'}`);
+            }
+        } catch (error) {
+            console.error('Failed to delete category', error);
+            alert('Failed to delete category due to a network error.');
+        }
+    };
+
     const openCategoryModal = (cat?: TrainingCategory) => {
         if (cat) {
             setEditingCategory(cat);
@@ -188,12 +207,20 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
                                         <td className="p-4">
                                             {cat.isActive ? <span className="text-green-400">Active</span> : <span className="text-red-400">Deactivated</span>}
                                         </td>
-                                        <td className="p-4 text-right">
+                                        <td className="p-4 text-right flex items-center justify-end gap-2">
                                             <button
                                                 onClick={() => openCategoryModal(cat)}
-                                                className="text-white hover:text-blue-400 p-2"
+                                                className="text-slate-400 hover:text-blue-400 p-2 transition-colors"
+                                                title="Edit Category"
                                             >
                                                 <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                                                className="text-slate-400 hover:text-red-400 p-2 transition-colors"
+                                                title="Delete Category"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </td>
                                     </tr>

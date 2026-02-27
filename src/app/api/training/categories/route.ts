@@ -159,3 +159,55 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
     }
 }
+
+// DELETE: Hard-delete a category and all nested posts/replies (Admin Only)
+export async function DELETE(request: Request) {
+    try {
+        const currentUser = await getCurrentUser();
+        if (!currentUser?.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+        const url = new URL(request.url);
+        const id = url.searchParams.get('id');
+
+        if (!id) {
+            return NextResponse.json({ error: 'Category ID is required' }, { status: 400 });
+        }
+
+        // We use a transaction to ensure clean cascading deletion.
+        // Even though Prisma supports direct cascading if schema.prisma has onDelete: Cascade,
+        // it's safer to manually wipe children to enforce business rules and log the action.
+
+        // 1. Find all Posts belonging to this category
+        const posts = await prisma.trainingPost.findMany({
+            where: { categoryId: id },
+            select: { id: true }
+        });
+        const postIds = posts.map(p => p.id);
+
+        if (postIds.length > 0) {
+            await prisma.$transaction([
+                // Wipe Read Statuses
+                prisma.trainingReadStatus.deleteMany({ where: { postId: { in: postIds } } }),
+                // Wipe Versions
+                prisma.trainingPostVersion.deleteMany({ where: { postId: { in: postIds } } }),
+                // Wipe Replies
+                prisma.trainingReply.deleteMany({ where: { postId: { in: postIds } } }),
+                // Wipe Posts
+                prisma.trainingPost.deleteMany({ where: { categoryId: id } }),
+                // Finally, wipe the Category itself
+                prisma.trainingCategory.delete({ where: { id } })
+            ]);
+        } else {
+            // No posts, just wipe the category
+            await prisma.trainingCategory.delete({ where: { id } });
+        }
+
+        await logAdminAction('DELETE', 'TrainingCategory', id, `Permanently deleted Training Category and its associated posts/replies.`);
+
+        return NextResponse.json({ success: true });
+
+    } catch (error) {
+        console.error('Error deleting category:', error);
+        return NextResponse.json({ error: 'Failed to delete category' }, { status: 500 });
+    }
+}

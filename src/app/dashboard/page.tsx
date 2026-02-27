@@ -16,9 +16,15 @@ export default async function DashboardPage() {
         redirect('/');
     }
 
+    let decoded: any;
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        decoded = jwt.verify(token, JWT_SECRET) as any;
+    } catch (error) {
+        // Invalid token
+        redirect('/');
+    }
 
+    try {
         const dbUser = await prisma.firefighter.findUnique({
             where: { id: decoded.id },
             select: { roleId: true }
@@ -27,23 +33,10 @@ export default async function DashboardPage() {
         if (dbUser) {
             decoded.roleId = dbUser.roleId;
         }
-
-        // If user is admin and tries to access this page, accessing via Login Button...
-        // The Login Button redirects Admins to /admin.
-        // But if they manually navigated here?
-        // Let's support Admins seeing their own dashboard too?
-        // Or redirect them to Admin portal?
-        // Prompt says: "keep using the same password logic, but instead of taking them to their own portal, take them to the admin portal."
-        // This usually means on Login.
-
-        // If I am an admin, I should go to /admin.
-        if (decoded.isAdmin) {
-            redirect('/admin');
-        }
-
-        return <UserDashboard user={decoded} />;
-    } catch (error) {
-        // Invalid token
-        redirect('/');
+    } catch (dbError) {
+        console.error("Dashboard DB fetch error:", dbError);
+        // Continue even if DB fetch fails, to show dashboard
     }
+
+    return <UserDashboard user={decoded} />;
 }

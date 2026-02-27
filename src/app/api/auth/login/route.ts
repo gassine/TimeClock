@@ -61,8 +61,8 @@ export async function POST(request: Request) {
         const cookieStore = await cookies();
         cookieStore.set('auth_session', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            secure: process.env.NODE_ENV === 'production' && process.env.HTTPS === 'true',
+            sameSite: 'lax', // Use lax instead of strict to prevent cross-navigation cookie drops
             maxAge: 60 * 60 * 8, // 8 hours
             path: '/',
         });
