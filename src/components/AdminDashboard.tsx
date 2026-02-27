@@ -1244,9 +1244,9 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
                     <div className="flex flex-col md:flex-row gap-8">
                         {/* Functionality Group */}
-                        <div className="flex-1 shrink-0 min-w-[200px]">
+                        <div className="flex-[2] min-w-[300px]">
                             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 pl-2">Administration</h3>
-                            <nav className="flex flex-wrap gap-2 bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
+                            <nav className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
                                 {[
                                     { id: 'reports', label: 'Time Reports', icon: FileText },
                                     { id: 'requests', label: 'Requests', icon: FileText, badge: requests.length > 0 ? requests.length : null },
@@ -1257,15 +1257,15 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id as any)}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${activeTab === tab.id
+                                        className={`flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg transition-all font-medium text-sm ${activeTab === tab.id
                                             ? 'bg-blue-600 text-white shadow-lg scale-[1.02]'
                                             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
                                             }`}
                                     >
-                                        <tab.icon className="w-4 h-4" />
-                                        {tab.label}
+                                        <tab.icon className="w-4 h-4 shrink-0" />
+                                        <span className="truncate">{tab.label}</span>
                                         {tab.badge ? (
-                                            <span className="ml-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                            <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
                                                 {tab.badge}
                                             </span>
                                         ) : null}
@@ -1275,9 +1275,9 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                         </div>
 
                         {/* Settings Group */}
-                        <div className="flex-1 shrink-0 min-w-[200px]">
+                        <div className="flex-[2] min-w-[300px]">
                             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 pl-2">Settings</h3>
-                            <nav className="flex flex-wrap gap-2 bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
+                            <nav className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
                                 {[
                                     { id: 'firefighters', label: 'Roster', icon: Users, badge: null },
                                     { id: 'roles', label: 'Roles', icon: Shield, badge: null },
@@ -1290,15 +1290,15 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     <button
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id as any)}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${activeTab === tab.id
+                                        className={`flex items-center justify-start gap-2 px-3 py-2.5 rounded-lg transition-all font-medium text-sm ${activeTab === tab.id
                                             ? 'bg-blue-600 text-white shadow-lg scale-[1.02]'
                                             : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
                                             }`}
                                     >
-                                        <tab.icon className="w-4 h-4" />
-                                        {tab.label}
+                                        <tab.icon className="w-4 h-4 shrink-0" />
+                                        <span className="truncate">{tab.label}</span>
                                         {tab.badge ? (
-                                            <span className="ml-1 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                            <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
                                                 {tab.badge}
                                             </span>
                                         ) : null}
