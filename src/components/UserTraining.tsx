@@ -23,7 +23,18 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
 
     useEffect(() => {
         fetchCategories();
+        const interval = setInterval(fetchCategories, 30000);
+        return () => clearInterval(interval);
     }, []);
+
+    // Auto-refresh posts when a category is selected
+    useEffect(() => {
+        if (!activeCategory) return;
+        const interval = setInterval(() => {
+            fetchPostsForCategory(activeCategory.id);
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [activeCategory]);
 
     const fetchCategories = async () => {
         try {
@@ -100,12 +111,12 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
 
         try {
             console.log('Sending Post request...', { categoryId: activeCategory.id, title: composeTitle, isDraft });
-            
+
             // If editing an existing post, use PUT
             const isEditing = activePost !== null;
             const url = '/api/training/posts';
             const method = isEditing ? 'PUT' : 'POST';
-            
+
             const payload: any = {
                 title: composeTitle,
                 content: composeContent,
@@ -130,7 +141,7 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
                 setComposeTitle('');
                 setComposeContent('');
                 setActivePost(null); // Clear loaded post editor
-                
+
                 // If they saved a draft while in drafts view, reload drafts. 
                 // Otherwise reload the active category.
                 if (activeCategory.id === 'drafts' && !isDraft) {

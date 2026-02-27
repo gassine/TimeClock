@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Settings, Eye, Users, AlertTriangle, Clock, MapPin, Search, MessageSquare, Trash2, Edit2, Pin, Archive, Unlock, Lock, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BookOpen, Plus, Settings, Eye, Users, AlertTriangle, Clock, MapPin, Search, MessageSquare, Trash2, Edit2, Pin, Archive, Unlock, Lock, RotateCcw, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { TrainingCategory, TrainingPost, TrainingPostVersion } from '@/types/training';
 
 type Role = { id: string; name: string };
@@ -22,9 +22,26 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
     const [viewingVersionsFor, setViewingVersionsFor] = useState<string | null>(null);
     const [versions, setVersions] = useState<TrainingPostVersion[]>([]);
 
+    // Post Preview Modal
+    const [viewingPost, setViewingPost] = useState<TrainingPost | null>(null);
+
+    // Drag & Drop
+    const dragItem = useRef<string | null>(null);
+    const dragOverItem = useRef<string | null>(null);
+    const [dragCategoryId, setDragCategoryId] = useState<string | null>(null);
+
+    // Collapsed category groups in Content Moderation
+    const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
     useEffect(() => {
         fetchCategories();
         fetchPosts();
+        const catInterval = setInterval(fetchCategories, 30000);
+        const postInterval = setInterval(fetchPosts, 30000);
+        return () => {
+            clearInterval(catInterval);
+            clearInterval(postInterval);
+        };
     }, []);
 
     const fetchCategories = async () => {
@@ -139,6 +156,79 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
         }
     };
 
+    const toggleCategoryCollapse = (catId: string) => {
+        setCollapsedCategories(prev => {
+            const next = new Set(prev);
+            if (next.has(catId)) next.delete(catId);
+            else next.add(catId);
+            return next;
+        });
+    };
+
+    // Group posts by category for Content Moderation
+    const postsByCategory = posts.reduce<Record<string, { categoryName: string; categoryId: string; posts: TrainingPost[] }>>((acc, post) => {
+        const catId = post.category?.id || 'uncategorized';
+        const catName = post.category?.name || 'Uncategorized';
+        if (!acc[catId]) acc[catId] = { categoryName: catName, categoryId: catId, posts: [] };
+        acc[catId].posts.push(post);
+        return acc;
+    }, {});
+
+    const handleDragStart = (postId: string, categoryId: string) => {
+        dragItem.current = postId;
+        setDragCategoryId(categoryId);
+    };
+
+    const handleDragOver = (e: React.DragEvent, postId: string) => {
+        e.preventDefault();
+        dragOverItem.current = postId;
+    };
+
+    const handleDrop = async (targetCategoryId: string) => {
+        if (!dragItem.current || !dragOverItem.current || dragCategoryId !== targetCategoryId) {
+            dragItem.current = null;
+            dragOverItem.current = null;
+            setDragCategoryId(null);
+            return;
+        }
+
+        const group = postsByCategory[targetCategoryId];
+        if (!group) return;
+
+        const currentPosts = [...group.posts];
+        const dragIdx = currentPosts.findIndex(p => p.id === dragItem.current);
+        const dropIdx = currentPosts.findIndex(p => p.id === dragOverItem.current);
+
+        if (dragIdx < 0 || dropIdx < 0) return;
+
+        const [movedItem] = currentPosts.splice(dragIdx, 1);
+        currentPosts.splice(dropIdx, 0, movedItem);
+
+        // Optimistically update state
+        const newPosts = posts.map(p => {
+            const newOrder = currentPosts.findIndex(cp => cp.id === p.id);
+            if (newOrder >= 0) return { ...p, order: newOrder };
+            return p;
+        });
+        setPosts(newPosts);
+
+        // Persist reorder to API
+        try {
+            await fetch('/api/training/posts', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(currentPosts.map(p => p.id))
+            });
+        } catch (e) {
+            console.error('Reorder failed', e);
+            fetchPosts(); // Revert on failure
+        }
+
+        dragItem.current = null;
+        dragOverItem.current = null;
+        setDragCategoryId(null);
+    };
+
     if (loading) return <div className="text-center p-8 text-slate-400">Loading Training Module...</div>;
 
     return (
@@ -243,70 +333,106 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
                 <div className="space-y-4">
                     <h2 className="text-xl font-bold flex items-center gap-2">
                         <AlertTriangle className="text-amber-400" />
-                        Master Post Index
+                        Content Moderation
                     </h2>
+                    <p className="text-sm text-slate-400">Posts grouped by category. Drag posts to reorder within a category. Click a post title to preview it.</p>
 
-                    <div className="space-y-3">
-                        {posts.map(post => (
-                            <div key={post.id} className={`p-4 rounded-xl border flex flex-col md:flex-row gap-4 justify-between items-start md:items-center ${post.isDeleted ? 'bg-red-900/10 border-red-500/30' : post.status === 'ARCHIVED' ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-800 border-slate-700'}`}>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-3 mb-1">
-                                        {post.isPinned && <Pin className="w-4 h-4 text-amber-500" />}
-                                        <h3 className={`font-bold truncate ${post.isDeleted || post.status === 'ARCHIVED' ? 'text-slate-400 line-through' : 'text-white'}`}>
-                                            {post.title}
-                                        </h3>
-                                        <span className="text-xs font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-700 text-slate-300">
-                                            {post.category?.name}
-                                        </span>
-                                        {post.status === 'DRAFT' && <span className="text-xs bg-amber-500/20 text-amber-400 px-2 rounded-full">DRAFT</span>}
-                                        {post.status === 'ARCHIVED' && <span className="text-xs bg-purple-500/20 text-purple-400 px-2 rounded-full">ARCHIVED</span>}
+                    {Object.keys(postsByCategory).length === 0 && <p className="text-slate-400 p-8 text-center bg-slate-800 rounded-xl">No posts exist to moderate yet.</p>}
+
+                    {Object.entries(postsByCategory).map(([catId, group]) => {
+                        const isCollapsed = collapsedCategories.has(catId);
+                        return (
+                            <div key={catId} className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
+                                {/* Category Header */}
+                                <button
+                                    onClick={() => toggleCategoryCollapse(catId)}
+                                    className="w-full flex items-center justify-between p-4 hover:bg-slate-700/30 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {isCollapsed ? <ChevronRight className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+                                        <span className="font-bold text-white text-lg">{group.categoryName}</span>
+                                        <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">{group.posts.length} posts</span>
                                     </div>
-                                    <p className="text-sm text-slate-400 flex items-center gap-4">
-                                        <span>By {post.author?.name}</span>
-                                        <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {post._count?.replies || 0} Replies</span>
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                    <button
-                                        onClick={() => handleViewVersions(post.id)}
-                                        className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors"
-                                    >
-                                        <RotateCcw className="w-3 h-3" /> History
-                                    </button>
-                                    <button
-                                        onClick={() => updatePostStatus(post.id, { allowReplies: !post.allowReplies })}
-                                        className={`p-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${post.allowReplies ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}
-                                        title={post.allowReplies ? "Lock Replies" : "Unlock Replies"}
-                                    >
-                                        {post.allowReplies ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                                    </button>
-                                    <button
-                                        onClick={() => updatePostStatus(post.id, { isPinned: !post.isPinned })}
-                                        className={`p-2 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors ${post.isPinned ? 'bg-amber-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}`}
-                                    >
-                                        <Pin className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                        onClick={() => updatePostStatus(post.id, { status: post.status === 'ARCHIVED' ? 'ACTIVE' : 'ARCHIVED' })}
-                                        className="p-2 bg-slate-700 hover:bg-purple-600 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors"
-                                    >
-                                        <Archive className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            if (confirm(`Are you sure you want to soft delete "${post.title}"?`)) {
-                                                updatePostStatus(post.id, { isDeleted: true });
-                                            }
-                                        }}
-                                        className="p-2 bg-slate-700 hover:bg-red-600 text-slate-200 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors"
-                                        disabled={post.isDeleted}
-                                    >
-                                        <Trash2 className="w-3 h-3" />
-                                    </button>
+                                </button>
+
+                                {/* Posts within this category */}
+                                {!isCollapsed && (
+                                    <div className="border-t border-slate-700 divide-y divide-slate-700/50">
+                                        {group.posts.map(post => (
+                                            <div
+                                                key={post.id}
+                                                draggable
+                                                onDragStart={() => handleDragStart(post.id, catId)}
+                                                onDragOver={(e) => handleDragOver(e, post.id)}
+                                                onDrop={() => handleDrop(catId)}
+                                                className={`p-4 flex flex-col md:flex-row gap-3 justify-between items-start md:items-center cursor-grab active:cursor-grabbing transition-colors ${post.isDeleted ? 'bg-red-900/10' : post.status === 'ARCHIVED' ? 'bg-slate-800/40' : 'hover:bg-slate-700/20'}`}
+                                            >
+                                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                    <GripVertical className="w-4 h-4 text-slate-500 shrink-0" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            {post.isPinned && <Pin className="w-3 h-3 text-amber-500 shrink-0" />}
+                                                            <button
+                                                                onClick={() => setViewingPost(post)}
+                                                                className={`font-bold truncate text-left hover:underline ${post.isDeleted || post.status === 'ARCHIVED' ? 'text-slate-400 line-through' : 'text-white hover:text-blue-400'}`}
+                                                            >
+                                                                {post.title}
+                                                            </button>
+                                                            {post.status === 'DRAFT' && <span className="text-xs bg-amber-500/20 text-amber-400 px-2 rounded-full shrink-0">DRAFT</span>}
+                                                            {post.status === 'ARCHIVED' && <span className="text-xs bg-purple-500/20 text-purple-400 px-2 rounded-full shrink-0">ARCHIVED</span>}
+                                                            {post.isDeleted && <span className="text-xs bg-red-500/20 text-red-400 px-2 rounded-full shrink-0">DELETED</span>}
+                                                        </div>
+                                                        <p className="text-xs text-slate-500 flex items-center gap-3">
+                                                            <span>By {post.author?.name}</span>
+                                                            <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {post._count?.replies || 0}</span>
+                                                            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button onClick={() => setViewingPost(post)} className="p-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors" title="Preview Post"><Eye className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => handleViewVersions(post.id)} className="p-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors" title="Edit History"><RotateCcw className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => updatePostStatus(post.id, { allowReplies: !post.allowReplies })} className={`p-1.5 rounded-lg transition-colors ${post.allowReplies ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-amber-500/20 text-amber-400'}`} title={post.allowReplies ? 'Lock Replies' : 'Unlock Replies'}>{post.allowReplies ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}</button>
+                                                    <button onClick={() => updatePostStatus(post.id, { isPinned: !post.isPinned })} className={`p-1.5 rounded-lg transition-colors ${post.isPinned ? 'bg-amber-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`} title={post.isPinned ? 'Unpin' : 'Pin'}><Pin className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => updatePostStatus(post.id, { status: post.status === 'ARCHIVED' ? 'ACTIVE' : 'ARCHIVED' })} className="p-1.5 bg-slate-700 hover:bg-purple-600 text-slate-300 rounded-lg transition-colors" title={post.status === 'ARCHIVED' ? 'Unarchive' : 'Archive'}><Archive className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => { if (confirm(`Soft delete "${post.title}"?`)) updatePostStatus(post.id, { isDeleted: true }); }} className="p-1.5 bg-slate-700 hover:bg-red-600 text-slate-300 rounded-lg transition-colors" disabled={post.isDeleted} title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* POST PREVIEW MODAL */}
+            {viewingPost && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                    <div className="bg-slate-900 rounded-2xl w-full max-w-3xl p-6 border border-slate-700 shadow-2xl space-y-4 my-8">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white">{viewingPost.title}</h2>
+                                <div className="flex items-center gap-3 mt-2 text-sm text-slate-400">
+                                    <span>By {viewingPost.author?.name}</span>
+                                    <span className="text-xs bg-slate-700 px-2 py-0.5 rounded-full">{viewingPost.category?.name}</span>
+                                    <span>{new Date(viewingPost.createdAt).toLocaleDateString()}</span>
+                                    {viewingPost.isPinned && <Pin className="w-3 h-3 text-amber-500" />}
+                                    {viewingPost.status === 'DRAFT' && <span className="text-xs bg-amber-500/20 text-amber-400 px-2 rounded-full">DRAFT</span>}
+                                    {viewingPost.status === 'ARCHIVED' && <span className="text-xs bg-purple-500/20 text-purple-400 px-2 rounded-full">ARCHIVED</span>}
                                 </div>
                             </div>
-                        ))}
-                        {posts.length === 0 && <p className="text-slate-400 p-8 text-center bg-slate-800 rounded-xl">No posts exist to moderate yet.</p>}
+                            <button onClick={() => setViewingPost(null)} className="text-slate-400 hover:text-white text-xl">✕</button>
+                        </div>
+                        <hr className="border-slate-700" />
+                        <div className="prose prose-invert max-w-none text-slate-300 whitespace-pre-wrap text-sm leading-relaxed">
+                            {viewingPost.content}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-slate-500 pt-4 border-t border-slate-700">
+                            <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {viewingPost._count?.replies || 0} Replies</span>
+                            <span>{viewingPost.allowReplies ? 'Replies open' : 'Replies locked'}</span>
+                        </div>
                     </div>
                 </div>
             )}
