@@ -76,8 +76,22 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
         }
     };
 
+    const formatAddress = (item: any) => {
+        if (!item.address) return item.display_name.split(',').slice(0, 3).join(', ');
+        const addr = item.address;
+        const houseNumber = addr.house_number || '';
+        const road = addr.road || '';
+        const street = houseNumber ? `${houseNumber} ${road}`.trim() : road;
+
+        const city = addr.city || addr.town || addr.village || addr.municipality || addr.hamlet || '';
+        const state = addr.state || '';
+
+        const parts = [street, city, state].filter(Boolean);
+        return parts.join(', ');
+    };
+
     const selectLocation = (item: any) => {
-        const cleanAddress = item.display_name.split(',').slice(0, 3).join(', ');
+        const cleanAddress = formatAddress(item);
         setFormData({ ...formData, location: cleanAddress });
         setShowLocationDropdown(false);
     };
@@ -351,7 +365,7 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                                 onMouseDown={() => selectLocation(loc)}
                                                 className="px-4 py-3 cursor-pointer text-sm hover:bg-slate-700 text-slate-200 border-b border-slate-700/50 last:border-0"
                                             >
-                                                {loc.display_name.split(',').slice(0, 3).join(',')}
+                                                {formatAddress(loc)}
                                             </div>
                                         ))}
                                     </div>
