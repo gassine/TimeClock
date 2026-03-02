@@ -360,6 +360,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             console.error('Failed to fetch reports', error);
         }
     };
+
     const handleModRequestAction = async (id: string, status: 'APPROVED' | 'DENIED', adminNotes: string) => {
         try {
             const res = await fetch(`/api/field-report-requests/${id}`, {
@@ -764,7 +765,9 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     };
 
     const handleDeleteTimeEntry = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this time entry?')) return;
+        if (!window.confirm("WARNING: Are you sure you want to completely delete this time entry? This action is permanent and will remove both the clock in and clock out records.")) {
+            return;
+        }
         setLoading(true);
         try {
             const res = await fetch(`/api/time-entries/${id}`, { method: 'DELETE' });
@@ -2194,12 +2197,18 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                         <td className="py-3 px-4 text-slate-500 font-mono">
                                                             {duration === '0h 0m' ? '< 1m' : duration}
                                                         </td>
-                                                        <td className="py-3 px-4">
+                                                        <td className="py-3 px-4 flex gap-2">
                                                             <button
                                                                 onClick={() => setEditingTimeEntry(entry)}
                                                                 className="text-blue-400 hover:text-blue-300 text-sm font-medium"
                                                             >
                                                                 Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteTimeEntry(entry.id)}
+                                                                className="text-red-400 hover:text-red-300 text-sm font-medium"
+                                                            >
+                                                                Delete
                                                             </button>
                                                         </td>
                                                     </tr>
