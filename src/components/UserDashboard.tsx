@@ -483,8 +483,9 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             <div className="flex gap-4 border-b border-slate-700 mb-6 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
                 <button
                     onClick={() => setActiveTab('timesheet')}
-                    className={`pb-4 px-2 font-bold whitespace-nowrap transition-all ${activeTab === 'timesheet' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
+                    className={`pb-4 px-2 font-bold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'timesheet' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
+                    <Clock className="w-5 h-5" />
                     My Timesheet
                 </button>
                 <button
@@ -505,6 +506,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                     onClick={() => setActiveTab('issues')}
                     className={`pb-4 px-2 font-bold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'issues' ? 'text-yellow-400 border-b-2 border-yellow-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
+                    <AlertCircle className="w-5 h-5" />
                     Issues
                     {issues.length > 0 && (
                         <span className="bg-yellow-500 text-slate-900 text-xs font-extra-bold px-2 py-0.5 rounded-full">
