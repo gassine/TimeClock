@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
         // 1. Find the active template for this apparatus
         const template = await prisma.truckCheckTemplate.findFirst({
-            where: { apparatusId },
+            where: { apparatusId, isArchived: false },
             include: {
                 items: {
                     orderBy: { order: 'asc' }

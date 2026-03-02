@@ -79,9 +79,18 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        // Basic Validation
-        if (!body.incidentTypeId || !body.date || !body.location || !body.district || !body.assignedApparatus) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        // Enhanced Validation
+        const missingFields: string[] = [];
+        if (!body.incidentTypeId) missingFields.push('Incident Type');
+        if (!body.date) missingFields.push('Date');
+        if (!body.location) missingFields.push('Location');
+        if (!body.district) missingFields.push('District');
+        if (!body.assignedApparatus || body.assignedApparatus.length === 0) missingFields.push('Assigned Apparatus');
+
+        if (missingFields.length > 0) {
+            return NextResponse.json({
+                error: `Missing required fields: ${missingFields.join(', ')}`
+            }, { status: 400 });
         }
 
         // Fetch Default Draft Status if not provided (though FE should usually provide or we default server-side)

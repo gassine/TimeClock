@@ -239,7 +239,8 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                 setEditingReport(null);
                 fetchData(); // Refresh list
             } else {
-                alert('Failed to save report');
+                const data = await res.json();
+                alert(data.error || 'Failed to save report');
             }
         } catch (error) {
             console.error('Error saving report:', error);

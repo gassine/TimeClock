@@ -1313,8 +1313,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
                 <div className="grid gap-8">
                     {message && (
-                        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-300 ${isSuccessMessage ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-                            {isSuccessMessage ? <FileText className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-300 ${isSuccessMessage ? 'bg-green-500/10 text-green-400 border border-green-500/20' : message.toLowerCase().includes('warning') || message.toLowerCase().includes('failed') ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                            {isSuccessMessage ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
                             <p className="font-medium">{message}</p>
                         </div>
                     )}

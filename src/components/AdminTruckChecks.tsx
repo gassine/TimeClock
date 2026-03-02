@@ -10,7 +10,7 @@ type UserContext = {
 };
 
 export default function AdminTruckChecks({ currentUser }: { currentUser: UserContext }) {
-    const [subTab, setSubTab] = useState<'templates' | 'reports'>('reports');
+    const [subTab, setSubTab] = useState<'templates' | 'reports' | 'images'>('reports');
     const [showArchived, setShowArchived] = useState(false);
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
@@ -19,6 +19,10 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
     const [templates, setTemplates] = useState<any[]>([]);
     const [reports, setReports] = useState<any[]>([]);
     const [apparatusList, setApparatusList] = useState<any[]>([]);
+
+    // Image Manager State
+    const [images, setImages] = useState<any[]>([]);
+    const [loadingImages, setLoadingImages] = useState(false);
 
     // Builder State
     const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
@@ -119,11 +123,44 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                 const res = await fetch('/api/truck-checks/reports');
                 const data = await res.json();
                 setReports(data || []);
+            } else if (subTab === 'images') {
+                await fetchImages();
             }
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchImages = async () => {
+        setLoadingImages(true);
+        try {
+            const res = await fetch('/api/images');
+            const data = await res.json();
+            setImages(data.images || []);
+        } catch (error) {
+            console.error('Failed to fetch images:', error);
+        } finally {
+            setLoadingImages(false);
+        }
+    };
+
+    const handleDeleteImage = async (filename: string) => {
+        if (!confirm('WARNING: Are you sure you want to delete this image? If it is attached to an active template, the template will lose its reference photo.')) return;
+
+        try {
+            const res = await fetch(`/api/images?filename=${encodeURIComponent(filename)}`, { method: 'DELETE' });
+            if (res.ok) {
+                setMessage('Image deleted successfully');
+                fetchImages();
+            } else {
+                const data = await res.json();
+                setMessage(data.error || 'Failed to delete image');
+            }
+        } catch (error) {
+            console.error(error);
+            setMessage('Error deleting image');
         }
     };
 
@@ -285,6 +322,12 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                     className={`pb-2 px-2 font-medium transition-colors border-b-2 ${subTab === 'templates' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
                 >
                     Templates Builder
+                </button>
+                <button
+                    onClick={() => setSubTab('images')}
+                    className={`pb-2 px-2 font-medium transition-colors border-b-2 ${subTab === 'images' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+                >
+                    System Images
                 </button>
             </div>
 
@@ -570,6 +613,51 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                             </tbody>
                         </table>
                     </div>
+                </div>
+            )}
+
+            {/* IMAGES TAB */}
+            {subTab === 'images' && (
+                <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="font-bold text-lg">System Images Manager</h3>
+                        <button onClick={fetchImages} className="text-sm text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 hover:bg-blue-500/20 px-3 py-1.5 rounded-lg">
+                            Refresh Images
+                        </button>
+                    </div>
+
+                    {loadingImages ? (
+                        <div className="text-center p-8 text-slate-400">Loading images...</div>
+                    ) : images.length === 0 ? (
+                        <div className="text-center p-8 border border-dashed border-slate-700 rounded-lg text-slate-500 italic">
+                            No images currently uploaded in the system.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {images.map(img => (
+                                <div key={img.name} className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden flex flex-col group">
+                                    <div className="h-32 bg-slate-900/50 flex flex-col justify-center items-center relative overflow-hidden backdrop-blur-sm">
+                                        <a href={img.url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                                        <img src={img.url} alt={img.name} className="w-full h-full object-cover transition-transform group-hover:scale-105 opacity-80 group-hover:opacity-100" />
+                                    </div>
+                                    <div className="p-3 text-xs flex flex-col gap-1 border-t border-slate-700 relative z-20 bg-slate-800">
+                                        <div className="flex justify-between items-start gap-2">
+                                            <p className="font-medium truncate text-slate-300 flex-1 break-all" title={img.name}>{img.name}</p>
+                                            <button
+                                                onClick={() => handleDeleteImage(img.name)}
+                                                className="text-slate-500 hover:text-red-400 transition-colors p-1"
+                                                title="Delete Image"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                        <p className="text-slate-500">{(img.size / 1024).toFixed(1)} KB</p>
+                                        <p className="text-slate-500">{format(new Date(img.createdAt), 'MMM d, yyyy')}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
