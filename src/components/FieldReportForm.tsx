@@ -49,6 +49,7 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
     const [fetchingLocation, setFetchingLocation] = useState(false);
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+    const isLocationInputFocused = useRef(false);
 
     const handleLocationSearch = (query: string) => {
         setFormData({ ...formData, location: query });
@@ -57,10 +58,12 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
             debounceTimeout.current = setTimeout(async () => {
                 setFetchingLocation(true);
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`);
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=us`);
                     const data = await res.json();
                     setLocationSuggestions(data);
-                    setShowLocationDropdown(true);
+                    if (isLocationInputFocused.current) {
+                        setShowLocationDropdown(true);
+                    }
                 } catch (error) {
                     console.error('Failed to fetch address suggestions', error);
                 } finally {
@@ -328,8 +331,14 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                     placeholder="123 Main St"
                                     value={formData.location}
                                     onChange={e => handleLocationSearch(e.target.value)}
-                                    onBlur={() => setTimeout(() => setShowLocationDropdown(false), 200)}
-                                    onFocus={() => { if (locationSuggestions.length > 0) setShowLocationDropdown(true); }}
+                                    onBlur={() => {
+                                        isLocationInputFocused.current = false;
+                                        setTimeout(() => setShowLocationDropdown(false), 200);
+                                    }}
+                                    onFocus={() => {
+                                        isLocationInputFocused.current = true;
+                                        if (locationSuggestions.length > 0) setShowLocationDropdown(true);
+                                    }}
                                     className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-10 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white placeholder-slate-500"
                                     required
                                 />
