@@ -119,13 +119,15 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
         e.preventDefault();
         setSubmitting(true);
 
-        // Validation: Check for empty personnel fields
-        for (const app of formData.assignedApparatus) {
-            for (const p of app.personnel) {
-                if (!p.firefighterId) {
-                    alert('Please select a firefighter for all personnel entries or remove empty rows.');
-                    setSubmitting(false);
-                    return;
+        // Validation: Check for empty personnel fields only if NOT saving as a draft
+        if (statusName !== 'Draft') {
+            for (const app of formData.assignedApparatus) {
+                for (const p of app.personnel) {
+                    if (!p.firefighterId) {
+                        alert('Please select a firefighter for all personnel entries or remove empty rows.');
+                        setSubmitting(false);
+                        return;
+                    }
                 }
             }
         }

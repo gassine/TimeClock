@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
         // Ensure the directory exists (Next.js public folder)
         // Adjust the path to properly locate the /public/uploads directory from the api route
         const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+        await mkdir(uploadDir, { recursive: true });
+
         const filepath = path.join(uploadDir, filename);
 
         await writeFile(filepath, buffer);

@@ -323,6 +323,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         fetchRequests();
         fetchFieldReportRequests();
         fetchTruckCheckRequests();
+        fetchIssues(); // Fetch issues so badge is populated on load
         if (activeTab === 'apparatus') {
             fetchApparatus();
         }
@@ -1254,10 +1255,10 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                 {[
                                     { id: 'reports', label: 'Time Reports', icon: FileText },
                                     { id: 'requests', label: 'Requests', icon: FileText, badge: requests.length > 0 ? requests.length : null },
-                                    { id: 'issues', label: 'Issues', icon: AlertTriangle },
+                                    { id: 'issues', label: 'Issues', icon: AlertTriangle, badge: issues.filter(i => !i.isArchived && !['Resolved', 'Closed'].includes(i.status?.name)).length > 0 ? issues.filter(i => !i.isArchived && !['Resolved', 'Closed'].includes(i.status?.name)).length : null },
                                     { id: 'field-reports', label: 'Field Reports', icon: ClipboardList },
                                     { id: 'truck-checks', label: 'Truck Checks', icon: Truck },
-                                    { id: 'training', label: 'Knowledge Base', icon: BookOpen },
+                                    { id: 'training', label: 'Knowledge', icon: BookOpen },
                                 ].map((tab) => (
                                     <button
                                         key={tab.id}
@@ -1270,7 +1271,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         <tab.icon className="w-4 h-4 shrink-0" />
                                         <span className="truncate">{tab.label}</span>
                                         {tab.badge ? (
-                                            <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                            <span className={`ml-auto text-white text-xs px-2 py-0.5 rounded-full ${tab.id === 'issues' ? 'bg-orange-500' : 'bg-red-500'}`}>
                                                 {tab.badge}
                                             </span>
                                         ) : null}
@@ -1303,7 +1304,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         <tab.icon className="w-4 h-4 shrink-0" />
                                         <span className="truncate">{tab.label}</span>
                                         {tab.badge ? (
-                                            <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                                            <span className={`ml-auto text-white text-xs px-2 py-0.5 rounded-full ${tab.id === 'issues' ? 'bg-orange-500' : 'bg-red-500'}`}>
                                                 {tab.badge}
                                             </span>
                                         ) : null}

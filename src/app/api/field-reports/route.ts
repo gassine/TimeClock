@@ -79,37 +79,34 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        // Enhanced Validation
-        const missingFields: string[] = [];
-        if (!body.incidentTypeId) missingFields.push('Incident Type');
-        if (!body.date) missingFields.push('Date');
-        if (!body.location) missingFields.push('Location');
-        if (!body.district) missingFields.push('District');
-        if (!body.assignedApparatus || body.assignedApparatus.length === 0) missingFields.push('Assigned Apparatus');
-
-        if (missingFields.length > 0) {
-            return NextResponse.json({
-                error: `Missing required fields: ${missingFields.join(', ')}`
-            }, { status: 400 });
-        }
-
-        // Fetch Default Draft Status if not provided (though FE should usually provide or we default server-side)
+        // Fetch Status to determine if we are saving a Draft
         let statusId = body.statusId;
-        let draftStatus; // Declare draftStatus here
-        if (!statusId) {
-            draftStatus = await prisma.reportStatus.findFirst({ where: { name: 'Draft' } }); // Fallback
-            statusId = draftStatus?.id;
+        let targetStatus;
+        if (statusId) {
+            targetStatus = await prisma.reportStatus.findUnique({ where: { id: statusId } });
+        } else {
+            targetStatus = await prisma.reportStatus.findFirst({ where: { name: 'Draft' } });
+            statusId = targetStatus?.id;
         }
 
-        // If draftStatus was not fetched because statusId was provided, and we need draftStatus for the log, fetch it.
-        // Or, if statusId was provided, we can use that statusId for the log details.
-        // For simplicity, let's assume if statusId is not 'Draft', the log will still say 'Initial Draft Created'
-        // or we can make the log more dynamic. Sticking to the provided instruction for now.
-        if (!draftStatus) {
-            draftStatus = await prisma.reportStatus.findFirst({ where: { name: 'Draft' } });
+        if (!targetStatus) {
+            return NextResponse.json({ error: 'Status not found in database' }, { status: 500 });
         }
-        if (!draftStatus) {
-            return NextResponse.json({ error: 'Draft status not found in database' }, { status: 500 });
+
+        // Only enforce strict validation if we are NOT saving as a draft
+        if (!targetStatus.isDraftLike) {
+            const missingFields: string[] = [];
+            if (!body.incidentTypeId) missingFields.push('Incident Type');
+            if (!body.date) missingFields.push('Date');
+            if (!body.location) missingFields.push('Location');
+            if (!body.district) missingFields.push('District');
+            if (!body.assignedApparatus || body.assignedApparatus.length === 0) missingFields.push('Assigned Apparatus');
+
+            if (missingFields.length > 0) {
+                return NextResponse.json({
+                    error: `Missing required fields: ${missingFields.join(', ')}`
+                }, { status: 400 });
+            }
         }
 
 
