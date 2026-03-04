@@ -119,6 +119,12 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
         e.preventDefault();
         setSubmitting(true);
 
+        if (!formData.incidentTypeId) {
+            alert('Please select an Incident Type to save or submit this report.');
+            setSubmitting(false);
+            return;
+        }
+
         // Validation: Check for empty personnel fields only if NOT saving as a draft
         if (statusName !== 'Draft') {
             for (const app of formData.assignedApparatus) {
@@ -146,7 +152,13 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                     if (draftStatus) statusId = draftStatus.id;
                 } else if (statusName === 'Submitted' && reportStatuses) {
                     const finalStatus = reportStatuses.find(s => !s.isEditable);
-                    if (finalStatus) statusId = finalStatus.id;
+                    if (finalStatus) {
+                        statusId = finalStatus.id;
+                    } else {
+                        alert('Configuration Error: No non-editable (Final) status found. Please configure a status with "Is Editable" turned OFF in the Admin Dashboard before submitting.');
+                        setSubmitting(false);
+                        return;
+                    }
                 } else if (statusName && reportStatuses) {
                     const status = reportStatuses.find(s => s.name === statusName);
                     if (status) statusId = status.id;
