@@ -186,9 +186,7 @@ model IncidentType {
 model ReportStatus {
   id             String        @id @default(uuid())
   name           String        @unique
-  isDraftLike    Boolean       @default(false) // If true, only visible to creator + admin
-  userCanEditOwn Boolean       @default(false) // If true, creator can edit fully
-  isFinal        Boolean       @default(false) // If true, locked for basic edits
+  isEditable     Boolean       @default(true)
   order          Int           @default(0)
   reports        FieldReport[]
   createdAt      DateTime      @default(now())

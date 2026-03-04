@@ -16,8 +16,21 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
         // Validation could be added here
+        const { name, order, isEditable } = body;
+
+        if (!name || order === undefined || isEditable === undefined) {
+            return NextResponse.json(
+                { error: 'Name, order, and isEditable are required' },
+                { status: 400 }
+            );
+        }
+
         const status = await prisma.reportStatus.create({
-            data: body
+            data: {
+                name,
+                order: Number(order),
+                isEditable: Boolean(isEditable)
+            }
         });
         return NextResponse.json(status);
     } catch (error) {

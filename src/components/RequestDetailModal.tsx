@@ -21,7 +21,8 @@ export default function RequestDetailModal({ request, onClose, onApprove, onDeny
 
     // Hydrate proposed report from JSON + Reference Data
     const proposedReport = useMemo(() => {
-        if (!request.proposedChanges) return null;
+        if (!request.proposedChanges) return currentReport;
+
         try {
             const changes = JSON.parse(request.proposedChanges);
             const base = { ...currentReport, ...changes };
@@ -51,7 +52,7 @@ export default function RequestDetailModal({ request, onClose, onApprove, onDeny
             return base;
         } catch (e) {
             console.error(e);
-            return null;
+            return currentReport;
         }
     }, [request, currentReport, incidentTypes, apparatus]);
 
@@ -103,20 +104,22 @@ export default function RequestDetailModal({ request, onClose, onApprove, onDeny
                         <p className="text-slate-200">{request.reason || 'No reason provided.'}</p>
                     </div>
 
-                    <div className="flex bg-slate-800 p-1 rounded-lg w-fit">
-                        <button
-                            onClick={() => setViewMode('proposed')}
-                            className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${viewMode === 'proposed' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Proposed Version
-                        </button>
-                        <button
-                            onClick={() => setViewMode('current')}
-                            className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${viewMode === 'current' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Current Version
-                        </button>
-                    </div>
+                    {request.proposedChanges && (
+                        <div className="flex bg-slate-800 p-1 rounded-lg w-fit">
+                            <button
+                                onClick={() => setViewMode('proposed')}
+                                className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${viewMode === 'proposed' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Proposed Version
+                            </button>
+                            <button
+                                onClick={() => setViewMode('current')}
+                                className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${viewMode === 'current' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Current Version
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Report Content Preview */}
@@ -192,7 +195,7 @@ export default function RequestDetailModal({ request, onClose, onApprove, onDeny
                         <button onClick={onClose} disabled={processing} className="px-6 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Cancel</button>
                         <button onClick={() => handleAction('deny')} disabled={processing} className="px-6 py-2 rounded-lg font-bold bg-slate-800 hover:bg-red-500/20 text-red-400 border border-transparent hover:border-red-500/50 transition-all">Deny Request</button>
                         <button onClick={() => handleAction('approve')} disabled={processing} className="px-6 py-2 rounded-lg font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2">
-                            {processing ? 'Processing...' : <><CheckCircle className="w-4 h-4" /> Approve Changes</>}
+                            {processing ? 'Processing...' : <><CheckCircle className="w-4 h-4" /> Approve Request</>}
                         </button>
                     </div>
                 </div>

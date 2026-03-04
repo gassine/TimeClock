@@ -5,9 +5,15 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
     const params = await props.params;
     try {
         const body = await request.json();
+
+        let updateData = { ...body };
+        if ('isEditable' in body) {
+            updateData.isEditable = Boolean(body.isEditable);
+        }
+
         const status = await prisma.reportStatus.update({
             where: { id: params.id },
-            data: body
+            data: updateData
         });
         return NextResponse.json(status);
     } catch (error) {

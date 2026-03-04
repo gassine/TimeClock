@@ -9,6 +9,7 @@ export async function GET(request: Request) {
         const limit = parseInt(searchParams.get('limit') || '10');
         const offset = parseInt(searchParams.get('offset') || '0');
 
+        const isOpen = searchParams.get('isOpen');
         const viewerId = searchParams.get('viewerId');
 
         const where: any = {};
@@ -18,20 +19,27 @@ export async function GET(request: Request) {
         // Filtering by Draft Status
         const isDraft = searchParams.get('isDraft'); // 'true' or 'false'
 
-        if (isDraft === 'true') {
-            // Drafts: Only show my own
+        if (isOpen === 'true') {
+            where.status = { isEditable: true };
+        } else if (isOpen === 'false') {
+            where.status = { isEditable: false };
+        } else if (isDraft === 'true') {
+            // Drafts: Show all drafts for all users
             where.status = { isDraftLike: true };
-            if (viewerId) where.createdByUserId = viewerId;
         } else if (isDraft === 'false') {
             // Recent (Submitted): Show all non-drafts
             where.status = { isDraftLike: false };
-        } else if (viewerId) {
-            // Fallback: Mixed view
+        }
+
+        // Apply viewer restrictions only if not fetching "open" reports globally
+        if (viewerId && isOpen !== 'true') {
+            // Fallback: Mixed view or specific user view for non-open reports
             where.OR = [
-                { status: { isDraftLike: false } },
-                { createdByUserId: viewerId }
+                { status: { isDraftLike: false } }, // Submitted reports are generally visible
+                { createdByUserId: viewerId } // User's own reports (including drafts)
             ];
         }
+
 
         // Date Range Filtering
         const start = searchParams.get('start');
@@ -85,7 +93,7 @@ export async function POST(request: Request) {
         if (statusId) {
             targetStatus = await prisma.reportStatus.findUnique({ where: { id: statusId } });
         } else {
-            targetStatus = await prisma.reportStatus.findFirst({ where: { name: 'Draft' } });
+            targetStatus = await prisma.reportStatus.findFirst({ where: { isEditable: true }, orderBy: { order: 'asc' } });
             statusId = targetStatus?.id;
         }
 
@@ -94,7 +102,7 @@ export async function POST(request: Request) {
         }
 
         // Only enforce strict validation if we are NOT saving as a draft
-        if (!targetStatus.isDraftLike) {
+        if (!targetStatus.isEditable) {
             const missingFields: string[] = [];
             if (!body.incidentTypeId) missingFields.push('Incident Type');
             if (!body.date) missingFields.push('Date');

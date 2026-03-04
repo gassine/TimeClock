@@ -100,13 +100,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                 console.error('Failed to load issues:', issuesData.error);
             }
 
-            // Get Drafts
-            const draftsRes = await fetch(`/api/field-reports?isDraft=true&viewerId=${user.id}`);
+            // Get Drafts (Open Reports)
+            const draftsRes = await fetch(`/api/field-reports?isOpen=true`);
             const draftsData = await draftsRes.json();
             if (Array.isArray(draftsData.reports)) setDrafts(draftsData.reports);
 
-            // Get Recent Reports (Initial Page)
-            const recentRes = await fetch(`/api/field-reports?isDraft=false&limit=10&offset=0`);
+            // Get Recent Reports (Closed Reports, Initial Page)
+            const recentRes = await fetch(`/api/field-reports?isOpen=false&limit=10&offset=0`);
             const recentData = await recentRes.json();
             if (Array.isArray(recentData.reports)) {
                 setRecentReports(recentData.reports);
@@ -202,7 +202,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
     const loadMoreRecent = async () => {
         try {
             const nextOffset = (recentPage + 1) * RECENT_LIMIT;
-            const res = await fetch(`/api/field-reports?isDraft=false&limit=${RECENT_LIMIT}&offset=${nextOffset}`);
+            const res = await fetch(`/api/field-reports?isOpen=false&limit=${RECENT_LIMIT}&offset=${nextOffset}`);
             const data = await res.json();
             if (Array.isArray(data.reports)) {
                 setRecentReports(prev => [...prev, ...data.reports]);
@@ -245,6 +245,36 @@ export default function UserDashboard({ user }: UserDashboardProps) {
         } catch (error) {
             console.error('Error saving report:', error);
             alert('Error saving report');
+        }
+    };
+
+    const handleReopenRequest = async (report: any) => {
+        const reason = prompt('Please enter a reason for reopening this report (optional):');
+        if (reason === null) return; // User cancelled
+
+        try {
+            const res = await fetch('/api/field-report-requests', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    reportId: report.id,
+                    requestedByUserId: user.id,
+                    requestedByRadioId: (user as any).radioId || 'N/A', // Assuming user object has it or we pass a dummy if missing
+                    requestType: report.incidentType?.name || 'Reopen Request',
+                    reason: reason || 'Reopen Request',
+                    proposedChanges: null
+                })
+            });
+
+            if (res.ok) {
+                alert('Request to reopen submitted successfully!');
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Failed to submit reopen request.');
+            }
+        } catch (error) {
+            console.error('Error submitting reopen request:', error);
+            alert('Error submitting reopen request.');
         }
     };
 
@@ -659,9 +689,9 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                     </div>
 
                     <div className="flex flex-col gap-8">
-                        {/* My Drafts section */}
+                        {/* Open Reports section */}
                         <div className="space-y-4">
-                            <h3 className="text-lg font-bold text-slate-400 flex items-center gap-2"><Edit2 className="w-4 h-4" /> My Drafts</h3>
+                            <h3 className="text-lg font-bold text-slate-400 flex items-center gap-2"><Edit2 className="w-4 h-4" /> Open Reports</h3>
                             {drafts.length === 0 ? (
                                 <p className="text-slate-500 italic py-4 bg-slate-800/30 rounded-xl px-4 border border-slate-800">No drafts pending.</p>
                             ) : (
@@ -771,12 +801,9 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                     report={selectedSubmittedReport}
                     onClose={() => setSelectedSubmittedReport(null)}
                     readOnly={true}
-                    isAuthor={user.id === selectedSubmittedReport.createdByUserId}
                     onEdit={() => {
-                        setEditingReport(selectedSubmittedReport);
-                        setIsRequestMode(true);
+                        handleReopenRequest(selectedSubmittedReport);
                         setSelectedSubmittedReport(null);
-                        setReportModalOpen(true);
                     }}
                 />
             )}

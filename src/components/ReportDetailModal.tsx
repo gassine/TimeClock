@@ -11,10 +11,9 @@ type ReportDetailModalProps = {
     onStatusChange?: (statusId: string) => Promise<void>; // For Admin
     reportStatuses?: any[]; // For Admin to change status
     readOnly?: boolean; // If true, hide edit/status actions
-    isAuthor?: boolean; // To show "Request Changes" if submitted
 };
 
-export default function ReportDetailModal({ report, onClose, onEdit, onStatusChange, reportStatuses, readOnly = false, isAuthor = false }: ReportDetailModalProps) {
+export default function ReportDetailModal({ report, onClose, onEdit, onStatusChange, reportStatuses, readOnly = false }: ReportDetailModalProps) {
     const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
 
     return (
@@ -124,15 +123,20 @@ export default function ReportDetailModal({ report, onClose, onEdit, onStatusCha
                             <button onClick={onClose} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Close</button>
                             {onEdit && (
                                 <button onClick={onEdit} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center justify-center gap-2">
-                                    <Edit2 className="w-4 h-4" /> {isAuthor ? 'Request Changes' : 'Edit Report'}
+                                    <Edit2 className="w-4 h-4" /> Edit Report
                                 </button>
                             )}
                         </div>
                     </div>
                 )}
                 {readOnly && (
-                    <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-end">
-                        <button onClick={onClose} className="px-6 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Close</button>
+                    <div className="p-6 border-t border-slate-800 bg-slate-900 flex justify-end gap-3">
+                        <button onClick={onClose} className="px-6 py-2.5 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">Close</button>
+                        {onEdit && (
+                            <button onClick={onEdit} className="px-6 py-2.5 rounded-lg font-bold bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center justify-center gap-2">
+                                <Edit2 className="w-4 h-4" /> Request to Reopen
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

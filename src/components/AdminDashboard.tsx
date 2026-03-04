@@ -149,7 +149,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     const [selectedReport, setSelectedReport] = useState<any | null>(null);
     const [newIncidentType, setNewIncidentType] = useState('');
     const [editingIncidentType, setEditingIncidentType] = useState<any>(null);
-    const [newReportStatus, setNewReportStatus] = useState({ name: '', isDraftLike: false, userCanEditOwn: false, isFinal: false, order: 0 });
+    const [newReportStatus, setNewReportStatus] = useState({ name: '', isEditable: true, order: 0 });
     const [editingReportStatus, setEditingReportStatus] = useState<any>(null);
 
     const handleAddComment = async (issueId: string) => {
@@ -410,6 +410,25 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
     };
 
+    const handleDeleteFieldReport = async (id: string) => {
+        if (!confirm('Are you sure you want to permanently delete this field report?')) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/field-reports/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setMessage('Field Report deleted successfully');
+                fetchFieldReports();
+            } else {
+                setMessage('Failed to delete report');
+            }
+        } catch (error) {
+            console.error('Error deleting report:', error);
+            setMessage('Error deleting report');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleUpdateReportStatus = async (reportId: string, statusId: string) => {
         if (!confirm('Change report status?')) return;
         try {
@@ -502,20 +521,20 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     const handleSaveReportStatus = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        const data = editingReportStatus || newReportStatus;
         try {
             const url = editingReportStatus ? `/api/report-statuses/${editingReportStatus.id}` : '/api/report-statuses';
             const method = editingReportStatus ? 'PUT' : 'POST';
-            const body = editingReportStatus || newReportStatus;
 
             const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify(data)
             });
 
             if (res.ok) {
                 setEditingReportStatus(null);
-                setNewReportStatus({ name: '', isDraftLike: false, userCanEditOwn: false, isFinal: false, order: 0 });
+                setNewReportStatus({ name: '', isEditable: true, order: 0 });
                 fetchFieldReportConfig();
                 setMessage('Report Status saved');
             }
@@ -1168,6 +1187,21 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
     };
 
+    const handleDeleteIssue = async (id: string) => {
+        if (!window.confirm('Are you sure you want to permanently delete this issue? This action cannot be undone.')) return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/issues/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete issue');
+
+            fetchIssues();
+            setMessage('Issue deleted successfully');
+        } catch (error: any) {
+            setMessage(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSaveStatus = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -1254,7 +1288,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             <nav className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
                                 {[
                                     { id: 'reports', label: 'Time Reports', icon: FileText },
-                                    { id: 'requests', label: 'Requests', icon: FileText, badge: requests.length > 0 ? requests.length : null },
+                                    { id: 'requests', label: 'Requests', icon: FileText, badge: (requests.length + fieldReportRequests.filter(r => r.status === 'PENDING').length + truckCheckRequests.length) > 0 ? (requests.length + fieldReportRequests.filter(r => r.status === 'PENDING').length + truckCheckRequests.length) : null },
                                     { id: 'issues', label: 'Issues', icon: AlertTriangle, badge: issues.filter(i => !i.isArchived && !['Resolved', 'Closed'].includes(i.status?.name)).length > 0 ? issues.filter(i => !i.isArchived && !['Resolved', 'Closed'].includes(i.status?.name)).length : null },
                                     { id: 'field-reports', label: 'Field Reports', icon: ClipboardList },
                                     { id: 'truck-checks', label: 'Truck Checks', icon: Truck },
@@ -2271,7 +2305,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                 </div>
                             )}
                             {/* FIELD REPORT MOD REQUESTS */}
-                            <h2 className="text-xl font-bold p-6 border-b border-t border-slate-700 flex items-center gap-2 mt-4"><GitPullRequest className="text-blue-400" /> Pending Field Report Mods ({fieldReportRequests.filter(r => r.status === 'PENDING').length})</h2>
+                            <h2 className="text-xl font-bold p-6 border-b border-t border-slate-700 flex items-center gap-2 mt-4"><GitPullRequest className="text-blue-400" /> Pending Field Report Reopens ({fieldReportRequests.filter(r => r.status === 'PENDING').length})</h2>
                             {fieldReportRequests.filter(r => r.status === 'PENDING').length === 0 ? (
                                 <p className="text-slate-400 text-center py-8">No pending field report modifications.</p>
                             ) : (
@@ -2293,7 +2327,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                     <td className="p-4">
                                                         <span className="px-2 py-1 rounded bg-slate-700 text-xs font-bold font-mono">
                                                             {req.requestType === 'add_self_to_apparatus' ? 'Add Self to Unit' :
-                                                                req.requestType === 'add_apparatus_with_self' ? 'Add Unit & Self' : 'General Edit'}
+                                                                req.requestType === 'add_apparatus_with_self' ? 'Add Unit & Self' :
+                                                                    req.requestType === 'general_edit' ? 'General Edit' : req.requestType}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 flex gap-2">
@@ -2472,12 +2507,21 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                     >
                                                         {issueStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                     </select>
-                                                    <button
-                                                        onClick={() => handleUpdateIssue(issue, { isArchived: !issue.isArchived })}
-                                                        className={`px-3 py-1 rounded-lg text-sm font-bold border transition-colors ${issue.isArchived ? 'border-green-500/30 text-green-400 hover:bg-green-500/10' : 'border-slate-600 text-slate-400 hover:bg-slate-700'}`}
-                                                    >
-                                                        {issue.isArchived ? 'Unarchive' : 'Archive'}
-                                                    </button>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleUpdateIssue(issue, { isArchived: !issue.isArchived })}
+                                                            className={`px-3 py-1 rounded-lg text-sm font-bold border transition-colors ${issue.isArchived ? 'border-green-500/30 text-green-400 hover:bg-green-500/10' : 'border-slate-600 text-slate-400 hover:bg-slate-700'}`}
+                                                        >
+                                                            {issue.isArchived ? 'Unarchive' : 'Archive'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteIssue(issue.id)}
+                                                            className="px-3 py-1 rounded-lg text-sm font-bold border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1"
+                                                            title="Delete Issue"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" /> Delete
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -2600,16 +2644,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" required
                                             />
                                             <div className="flex items-center gap-2">
-                                                <input type="checkbox" checked={editingReportStatus ? editingReportStatus.isDraftLike : newReportStatus.isDraftLike} onChange={e => editingReportStatus ? setEditingReportStatus({ ...editingReportStatus, isDraftLike: e.target.checked }) : setNewReportStatus({ ...newReportStatus, isDraftLike: e.target.checked })} />
-                                                <label className="text-sm text-slate-300">Is Draft-Like (Private)</label>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <input type="checkbox" checked={editingReportStatus ? editingReportStatus.userCanEditOwn : newReportStatus.userCanEditOwn} onChange={e => editingReportStatus ? setEditingReportStatus({ ...editingReportStatus, userCanEditOwn: e.target.checked }) : setNewReportStatus({ ...newReportStatus, userCanEditOwn: e.target.checked })} />
-                                                <label className="text-sm text-slate-300">User Can Edit Own</label>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <input type="checkbox" checked={editingReportStatus ? editingReportStatus.isFinal : newReportStatus.isFinal} onChange={e => editingReportStatus ? setEditingReportStatus({ ...editingReportStatus, isFinal: e.target.checked }) : setNewReportStatus({ ...newReportStatus, isFinal: e.target.checked })} />
-                                                <label className="text-sm text-slate-300">Is Final (Locked)</label>
+                                                <input type="checkbox" checked={editingReportStatus ? editingReportStatus.isEditable : newReportStatus.isEditable} onChange={e => editingReportStatus ? setEditingReportStatus({ ...editingReportStatus, isEditable: e.target.checked }) : setNewReportStatus({ ...newReportStatus, isEditable: e.target.checked })} />
+                                                <label className="text-sm text-slate-300">Is Editable (Open)</label>
                                             </div>
                                             <input
                                                 type="number" placeholder="Order"
@@ -2628,8 +2664,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                     <tr key={s.id} className="border-b border-slate-700/50">
                                                         <td className="p-2 font-bold">{s.name}</td>
                                                         <td className="p-2 text-xs text-slate-400 space-x-1">
-                                                            {s.isDraftLike && <span className="bg-yellow-500/10 text-yellow-500 px-1 rounded">Draft</span>}
-                                                            {s.isFinal && <span className="bg-green-500/10 text-green-500 px-1 rounded">Final</span>}
+                                                            {s.isEditable ? <span className="bg-green-500/10 text-green-500 px-1 rounded">Editable</span> : <span className="bg-red-500/10 text-red-500 px-1 rounded">Locked</span>}
                                                         </td>
                                                         <td className="p-2">{s.order}</td>
                                                         <td className="p-2 flex gap-2">
@@ -2676,15 +2711,23 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                         </td>
                                                         <td className="p-4 text-slate-300">{report.createdByUser?.name || 'Unknown'}</td>
                                                         <td className="p-4">
-                                                            <button
-                                                                onClick={async () => {
-                                                                    const res = await fetch(`/api/field-reports/${report.id}`);
-                                                                    if (res.ok) setSelectedReport(await res.json());
-                                                                }}
-                                                                className="text-blue-400 hover:text-blue-300 font-medium text-sm flex items-center gap-1"
-                                                            >
-                                                                View Details
-                                                            </button>
+                                                            <div className="flex items-center gap-3">
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        const res = await fetch(`/api/field-reports/${report.id}`);
+                                                                        if (res.ok) setSelectedReport(await res.json());
+                                                                    }}
+                                                                    className="text-blue-400 hover:text-blue-300 font-medium text-sm flex items-center gap-1"
+                                                                >
+                                                                    View Details
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteFieldReport(report.id)}
+                                                                    className="text-red-400 hover:text-red-300 font-medium text-sm flex items-center gap-1"
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -2720,17 +2763,6 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                 />
                             )}
 
-                            {selectedModRequest && (
-                                <RequestDetailModal
-                                    request={selectedModRequest}
-                                    onClose={() => setSelectedModRequest(null)}
-                                    onApprove={(id, notes) => handleModRequestAction(id, 'APPROVED', notes)}
-                                    onDeny={(id, notes) => handleModRequestAction(id, 'DENIED', notes)}
-                                    incidentTypes={incidentTypes}
-                                    firefighters={firefighters}
-                                    apparatus={apparatus}
-                                />
-                            )}
                         </div>
                     )}
 
@@ -2858,6 +2890,20 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                         </div>
                     )}
 
+
+                    {/* REQUEST DETAIL MODAL (GLOBAL) */}
+                    {selectedModRequest && (
+                        <RequestDetailModal
+                            request={selectedModRequest}
+                            onClose={() => setSelectedModRequest(null)}
+                            onApprove={(id, notes) => handleModRequestAction(id, 'APPROVED', notes)}
+                            onDeny={(id, notes) => handleModRequestAction(id, 'DENIED', notes)}
+                            incidentTypes={incidentTypes}
+                            firefighters={firefighters}
+                            apparatus={apparatus}
+                        />
+                    )}
+
                     {/* Password Modal */}
                     {passwordModalOpen && passwordFirefighter && (
                         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -2892,6 +2938,6 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
