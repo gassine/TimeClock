@@ -117,6 +117,16 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
 
     const handleFormSubmit = async (e: React.FormEvent, statusName?: string) => {
         e.preventDefault();
+
+        // If not saving as draft, explicitly trigger HTML5 constraint validation
+        if (statusName !== 'Draft') {
+            const form = (e.currentTarget as HTMLElement).closest('form');
+            if (form && !form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+        }
+
         setSubmitting(true);
 
         if (!formData.incidentTypeId) {
