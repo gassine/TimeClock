@@ -2186,7 +2186,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             {/* Hours Summary */}
                             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Clock className="text-green-400" /> Hours Summary ({dateRange.label})</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
                                     {/* All Personnel Card */}
                                     {(() => {
                                         const totalMs = Object.values(summaryStats).reduce((acc, curr) => acc + curr.totalMs, 0);
@@ -2199,45 +2199,72 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         const minutes = Math.floor((totalHours - hours) * 60);
 
                                         return (
-                                            <div className="bg-slate-700/50 p-4 rounded-xl border-2 border-slate-600 flex justify-between items-center shadow-lg">
+                                            <div className="bg-slate-700/50 p-6 rounded-xl border-2 border-slate-600 flex justify-between items-center shadow-lg mb-6 max-w-2xl">
                                                 <div>
-                                                    <p className="font-bold text-lg text-white flex items-center gap-2"><Users className="w-5 h-5 text-blue-400" /> All Personnel</p>
-                                                    <div className="flex gap-4 text-xs sm:text-sm text-slate-300 mt-1">
-                                                        <span>{totalShifts} shifts</span>
-                                                        <span className="flex items-center gap-1 text-blue-300 font-bold"><Truck className="w-3 h-3" /> {totalCalls} calls</span>
+                                                    <p className="font-bold text-xl text-white flex items-center gap-2"><Users className="w-6 h-6 text-blue-400" /> All Personnel Summary</p>
+                                                    <div className="flex gap-6 text-sm text-slate-300 mt-2">
+                                                        <span><span className="font-bold text-white">{totalShifts}</span> shifts</span>
+                                                        <span className="flex items-center gap-1"><Truck className="w-4 h-4 text-blue-400" /> <span className="font-bold text-white">{totalCalls}</span> calls</span>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-xl sm:text-3xl font-mono text-green-400 bg-slate-800 px-2 py-1 rounded inline-block whitespace-nowrap">{hours}h {minutes}m</p>
+                                                    <p className="text-3xl font-mono text-green-400 bg-slate-800 px-4 py-2 rounded-lg inline-block whitespace-nowrap shadow-inner border border-slate-700">{hours}h {minutes}m</p>
                                                 </div>
                                             </div>
                                         );
                                     })()}
 
-                                    {Object.entries(summaryStats).map(([id, stats]) => {
-                                        const totalHours = stats.totalMs / (1000 * 60 * 60);
-                                        const hours = Math.floor(totalHours);
-                                        const minutes = Math.floor((totalHours - hours) * 60);
-                                        const calls = callCounts[id] || 0;
+                                    <div className="overflow-x-auto w-full scrollbar-thin">
+                                        <table className="w-full text-left whitespace-nowrap sm:whitespace-normal min-w-max sm:min-w-0">
+                                            <thead>
+                                                <tr className="border-b border-slate-700 text-slate-400 text-sm">
+                                                    <th className="pb-3 px-4">Personnel</th>
+                                                    <th className="pb-3 px-4">Shifts</th>
+                                                    <th className="pb-3 px-4">Calls</th>
+                                                    <th className="pb-3 px-4 text-right">Total Hours</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-700">
+                                                {(() => {
+                                                    const aggregatedStats = sortedFirefighters.map(ff => {
+                                                        const stats = summaryStats[ff.id] || { count: 0, totalMs: 0 };
+                                                        const calls = callCounts[ff.id] || 0;
+                                                        return {
+                                                            id: ff.id,
+                                                            name: ff.name,
+                                                            count: stats.count,
+                                                            totalMs: stats.totalMs,
+                                                            calls: calls
+                                                        };
+                                                    }).filter(stat => stat.count > 0 || stat.calls > 0)
+                                                    .sort((a,b) => b.totalMs - a.totalMs);
 
-                                        return (
-                                            <div key={id} className="bg-slate-900 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
-                                                <div>
-                                                    <p className="font-bold text-base sm:text-lg">{stats.name}</p>
-                                                    <div className="flex gap-4 text-xs sm:text-sm text-slate-400">
-                                                        <span>{stats.count} shifts</span>
-                                                        <span className="flex items-center gap-1 text-blue-400 font-bold"><Truck className="w-3 h-3" /> {calls} calls</span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right pl-2">
-                                                    <p className="text-lg sm:text-2xl font-mono text-green-400 whitespace-nowrap">{hours}h {minutes}m</p>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                    {Object.keys(summaryStats).length === 0 && (
-                                        <p className="text-slate-400 col-span-full">No completed shifts in this period.</p>
-                                    )}
+                                                    if (aggregatedStats.length === 0) {
+                                                        return (
+                                                            <tr>
+                                                                <td colSpan={4} className="py-6 text-center text-slate-500 italic">No activity recorded for this period.</td>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    return aggregatedStats.map((stat) => {
+                                                        const totalHours = stat.totalMs / (1000 * 60 * 60);
+                                                        const hours = Math.floor(totalHours);
+                                                        const minutes = Math.floor((totalHours - hours) * 60);
+                                                        
+                                                        return (
+                                                            <tr key={stat.id} className="hover:bg-slate-700/50 transition-colors">
+                                                                <td className="py-4 px-4 font-bold text-white text-lg">{stat.name}</td>
+                                                                <td className="py-4 px-4 text-slate-300 text-base">{stat.count}</td>
+                                                                <td className="py-4 px-4 text-blue-400 font-bold text-base">{stat.calls}</td>
+                                                                <td className="py-4 px-4 text-right font-mono text-green-400 text-lg">{hours}h {minutes}m</td>
+                                                            </tr>
+                                                        );
+                                                    });
+                                                })()}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
 

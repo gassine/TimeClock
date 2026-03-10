@@ -20,8 +20,59 @@ type UserDashboardProps = {
 };
 
 export default function UserDashboard({ user }: UserDashboardProps) {
-    const [stats, setStats] = useState({ weekHours: 0, monthHours: 0, weekCalls: 0, monthCalls: 0 });
+    const [stats, setStats] = useState({ hours: 0, calls: 0 });
     const [entries, setEntries] = useState<any[]>([]);
+
+    const [dateRange, setDateRange] = useState<{ start: string; end: string; label: string }>({
+        start: (() => {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            return start.toISOString();
+        })(),
+        end: (() => {
+            const now = new Date();
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+            return end.toISOString();
+        })(),
+        label: 'This Month',
+    });
+
+    const setPresetRange = (range: 'week' | 'month' | 'year' | 'lastYear' | 'lifetime') => {
+        const now = new Date();
+        let start = new Date();
+        let end = new Date();
+        let label = '';
+
+        switch (range) {
+            case 'week':
+                const day = now.getDay();
+                const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                start.setDate(diff);
+                start.setHours(0, 0, 0, 0);
+                end.setHours(23, 59, 59, 999);
+                label = 'This Week';
+                break;
+            case 'month':
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+                label = 'This Month';
+                break;
+            case 'year':
+                start = new Date(now.getFullYear(), 0, 1);
+                end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+                label = 'This Year';
+                break;
+            case 'lastYear':
+                start = new Date(now.getFullYear() - 1, 0, 1);
+                end = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+                label = 'Last Year';
+                break;
+            case 'lifetime':
+                setDateRange({ start: '', end: '', label: 'Lifetime' });
+                return;
+        }
+        setDateRange({ start: start.toISOString(), end: end.toISOString(), label });
+    };
     const [activePersonnel, setActivePersonnel] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [requestModalOpen, setRequestModalOpen] = useState(false);
@@ -73,14 +124,59 @@ export default function UserDashboard({ user }: UserDashboardProps) {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (activeTab === 'timesheet') {
+            fetchTimesheetData();
+        }
+    }, [activeTab, dateRange]);
+
+    const fetchTimesheetData = async () => {
+        try {
+            setLoading(true);
+            const params = new URLSearchParams();
+            params.append('firefighterId', user.id);
+            if (dateRange.start) params.append('start', dateRange.start);
+            if (dateRange.end) params.append('end', dateRange.end);
+
+            const res = await fetch(`/api/time-entries?${params.toString()}`);
+            const data = await res.json();
+
+            if (Array.isArray(data)) {
+                setEntries(data);
+                let totalHours = 0;
+                data.forEach((e: any) => {
+                    if (e.clockOut) {
+                        const duration = (new Date(e.clockOut).getTime() - new Date(e.clockIn).getTime()) / (1000 * 60 * 60);
+                        totalHours += duration;
+                    }
+                });
+                
+                // If "Lifetime" is selected (no start date), default call counts to last 30 days to prevent huge queries if preferred,
+                // but for users lifetime calls might be okay. Replicating admin logic:
+                const callCountParams = new URLSearchParams(params);
+                if (!callCountParams.has('start')) {
+                    const thirtyDaysAgo = new Date();
+                    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                    callCountParams.append('start', thirtyDaysAgo.toISOString());
+                }
+
+                const callsRes = await fetch(`/api/stats/user-call-counts?${callCountParams.toString()}`);
+                const callsData = await callsRes.json();
+                const totalCalls = callsData[user.id] || 0;
+
+                setStats({ hours: totalHours, calls: totalCalls });
+            } else {
+                setEntries([]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch timesheet data', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchData = async () => {
         try {
-            // Get Time Entries (Last 30 days)
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-            const res = await fetch(`/api/time-entries?firefighterId=${user.id}&start=${thirtyDaysAgo.toISOString()}`);
-            const data = await res.json();
 
             // Get currently clocked-in personnel
             const activeRes = await fetch('/api/time-entries?activeOnly=true');
@@ -135,40 +231,6 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             const statusData = await statusRes.json();
             if (Array.isArray(statusData)) setReportStatuses(statusData);
 
-            // Calculate Stats variables
-            let week = 0;
-            let month = 0;
-            const now = new Date();
-            const startOfWeek = new Date(now);
-            startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Monday
-            startOfWeek.setHours(0, 0, 0, 0);
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-            if (Array.isArray(data)) {
-                setEntries(data);
-                data.forEach((e: any) => {
-                    if (e.clockOut) {
-                        const duration = (new Date(e.clockOut).getTime() - new Date(e.clockIn).getTime()) / (1000 * 60 * 60);
-                        const eDate = new Date(e.clockIn);
-                        if (eDate >= startOfWeek) week += duration;
-                        if (eDate >= startOfMonth) month += duration;
-                    }
-                });
-            } else {
-                setEntries([]);
-                console.error('Failed to load entries:', data.error);
-            }
-
-            // Get Call Counts
-            const weekCallsRes = await fetch(`/api/stats/user-call-counts?firefighterId=${user.id}&start=${startOfWeek.toISOString()}`);
-            const weekCallsData = await weekCallsRes.json();
-            const weekCalls = weekCallsData[user.id] || 0;
-
-            const monthCallsRes = await fetch(`/api/stats/user-call-counts?firefighterId=${user.id}&start=${startOfMonth.toISOString()}`);
-            const monthCallsData = await monthCallsRes.json();
-            const monthCalls = monthCallsData[user.id] || 0;
-
-            setStats({ weekHours: week, monthHours: month, weekCalls, monthCalls });
             setLoading(false);
         } catch (error) {
             console.error('Failed to fetch data', error);
@@ -601,27 +663,37 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                         </div>
                     </div>
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-                            <h3 className="text-slate-400 text-sm font-medium mb-1">Activity This Week</h3>
-                            <div className="flex gap-6">
-                                <div>
-                                    <p className="text-3xl font-bold text-green-400">{stats.weekHours.toFixed(1)} <span className="text-lg font-normal text-slate-500">hrs</span></p>
-                                </div>
-                                <div className="border-l border-slate-700 pl-6">
-                                    <p className="text-3xl font-bold text-blue-400">{stats.weekCalls} <span className="text-lg font-normal text-slate-500">calls</span></p>
-                                </div>
+                    {/* Filters & Stats Cards */}
+                    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-slate-700 pb-4">
+                            <h2 className="text-xl font-bold flex items-center gap-2"><Clock className="text-blue-400" /> Activity Filters</h2>
+                            <div className="flex gap-2 flex-wrap">
+                                {[
+                                    { id: 'week', label: 'This Week' },
+                                    { id: 'month', label: 'This Month' },
+                                    { id: 'year', label: 'This Year' },
+                                    { id: 'lastYear', label: 'Last Year' },
+                                    { id: 'lifetime', label: 'Lifetime' },
+                                ].map((p) => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => setPresetRange(p.id as any)}
+                                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${dateRange.label === p.label ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-                            <h3 className="text-slate-400 text-sm font-medium mb-1">Activity This Month</h3>
-                            <div className="flex gap-6">
+
+                        <div className="mb-2">
+                            <h3 className="text-slate-400 text-sm font-medium mb-2">Activity for {dateRange.label}</h3>
+                            <div className="flex gap-8">
                                 <div>
-                                    <p className="text-3xl font-bold text-green-400">{stats.monthHours.toFixed(1)} <span className="text-lg font-normal text-slate-500">hrs</span></p>
+                                    <p className="text-4xl font-bold text-green-400">{stats.hours.toFixed(1)} <span className="text-xl font-normal text-slate-500">hrs</span></p>
                                 </div>
-                                <div className="border-l border-slate-700 pl-6">
-                                    <p className="text-3xl font-bold text-blue-400">{stats.monthCalls} <span className="text-lg font-normal text-slate-500">calls</span></p>
+                                <div className="border-l border-slate-700 pl-8">
+                                    <p className="text-4xl font-bold text-blue-400">{stats.calls} <span className="text-xl font-normal text-slate-500">calls</span></p>
                                 </div>
                             </div>
                         </div>

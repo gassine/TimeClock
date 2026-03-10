@@ -25,7 +25,7 @@ export async function GET(request: Request) {
                         lte: endDate
                     },
                     status: {
-                        isDraftLike: false
+                        isEditable: false
                     }
                 }
             }
