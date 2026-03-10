@@ -40,8 +40,12 @@ model Firefighter {
   truckCheckRequests    TruckCheckRequest[]
 
   // Training Relations
-  trainingPosts        TrainingPost[]
-  trainingReplies      TrainingReply[]
+  trainingPosts   TrainingPost[]
+  trainingReplies TrainingReply[]
+
+  // Notice Relations
+  notices Notice[]
+
   trainingReadStatuses TrainingReadStatus[]
 }
 
@@ -184,13 +188,13 @@ model IncidentType {
 }
 
 model ReportStatus {
-  id             String        @id @default(uuid())
-  name           String        @unique
-  isEditable     Boolean       @default(true)
-  order          Int           @default(0)
-  reports        FieldReport[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id         String        @id @default(uuid())
+  name       String        @unique
+  isEditable Boolean       @default(true)
+  order      Int           @default(0)
+  reports    FieldReport[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 }
 
 model FieldReport {
@@ -459,4 +463,25 @@ model TrainingPostVersion {
   editorId String? // ID of the user who made the edit
 
   createdAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------
+// NOTICES MODULE MODELS
+// ---------------------------------------------------------
+
+model Notice {
+  id        String      @id @default(cuid())
+  text      String
+  authorId  String
+  author    Firefighter @relation(fields: [authorId], references: [id])
+  isPinned  Boolean     @default(false)
+  order     Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model NoticeSettings {
+  id                String  @id @default(cuid())
+  everyoneCanPost   Boolean @default(false)
+  everyoneCanDelete Boolean @default(false)
 }

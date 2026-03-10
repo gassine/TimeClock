@@ -6,6 +6,7 @@ import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import UserTruckChecks from './UserTruckChecks';
 import UserTraining from './UserTraining';
+import NoticesSection from './NoticesSection';
 import { format } from 'date-fns';
 import { formatPhoneNumber } from '@/lib/utils';
 
@@ -509,6 +510,9 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                     <LogOut className="w-4 h-4" /> Log Out
                 </button>
             </header>
+
+            {/* Notices Section */}
+            <NoticesSection user={user} />
 
             {/* Tab Navigation */}
             <div className="flex gap-4 border-b border-slate-700 mb-6 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">

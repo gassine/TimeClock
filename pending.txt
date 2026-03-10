@@ -1,0 +1,87 @@
+The report history shows action by a bunch of random letters instead of the name of the user logged in doing the changes or who actually took the action
+
+
+In the timeclock section for both the user and the admin dashboards. On each user result of hours worked during the specified time range I want you add a new element that displays the number of calls that this user has being part of in that time range. To do that it will have to consult per radio ID to how many calls/reports that radio ID has been attached to on calls that happened in the same time range that the time calculation is using.
+
+The request to edit the field report functionality from users is not showing. I know we spoke about implementing it before, in a way that after a report is submitted a user can request to be added to the report as an apparatus with personnel, or themselves as personnel to the apparatus. Then an admin can see the request in the requests tab and approve or reject it.
+
+
+
+I want to create a new section for truck checks, similar to the field report functionality I want to have an interface in both the user dashboard and the admin portal.
+
+On the admin side I want to be able to create truck check duynamic forms, this is the way it would work. Each form can be assigned to one of the existing apparatuses. Inside, the admin can choose to add/remove items, and these items will have a name, a description, a toggle box with 3 options yes n/a and no with the fault for all being n/a, a free text field for comments, and an optional photo upload where only the admin can upload a photo from this form. Any number of fields can be added per form. An admin should be able to add, edit and delete these fields and these forms as they want from an admin section. The goal of these is to check the specific items that the firefighters need to check during their daily truck checks. Each apparatus will have different things that need to be checked though that's why they need to be able to be created dynamically
+
+Also on the admin side, admins will be able to receive the submitted report checks, and each report will have a status open or closed, when in open state the users can edit the truck checks until it has been submitted, when submitted then only an admin can edit the report, or they can send it back to open to the users to edit them.
+
+On the user side, the user should be able to create a new truck check report, this will load the template that the admin created for that report, and after one of these reports has been created it should display in a list of open reports in the draft status. At that point anyone can access that report and start filling it. It is important that as users are filling it, it reflects on everyone else the changes made, the idea is that multiple people can work on one truck at the same time, but they can only do so if they can see what their partners are completing in real time. The user will only be able to click the toggle and enter text in the comment field, all the other fields will be loaded from the content the admin entered in the template, including the photo if there is any.
+
+Every time a user enters information into any of the fields, the software should record the radio id of the user who did it and date and time it happened, this will allow only 1 user per item so if it was entered and the another user interacted with that specific field by entering text or changing the state of the toggle it should replace the old information wit the latest user who interacted with it, and this information should be visible to the admin upon reviewing the reports from the admin portal.
+
+This truck check section will have both an open reports display and a past reports display, even though anyone can access the open report, for closed reports there should be a button that is a "request to open" and its sent to the admin request panel for approval, if approved the report should change to open automatically.
+
+--
+
+Remove the description under truck checks in the user dashboad that explains what that menu does
+Add a badge on the "truck checks" button in the admin portal so they can see how many reopen requests they have
+In the user dashboard show the open truck check reports first and then the closed ones below instead of side by side
+If possible allow the user to upload the photo directly from their device/computer in the photo for the template instead of putting a URL
+Add a Location field to the items of the template for truck checks, that way they can mark if it is in the right 1 compartment and such. If possible make it so there is a dynamic area inside of the truck check reports for admin where they can see the list of apparatuses and then create edit and delete a persistent list of locations for each apparatus (for example right front compartment 1, right compartment 2) and so on. Then when the users are filling the truck check report they can see the items grouped per location so it's easy for them to check a whole compartment at the time.
+
+Also make sure that each truck check report has a date field for the whole report, this is one of the first items that the users must enter when creating a truck check report.
+
+One more thing, when trying to create a truck check report from the user dashboard the system is crashing with error 
+
+## Error Type
+Runtime ReferenceError
+
+## Error Message
+Calendar is not defined
+
+
+    at UserTruckChecks/<.children<.children</<.children<.children< (src/components/UserTruckChecks.tsx:448:98)
+    at UserTruckChecks/<.children<.children< (src/components/UserTruckChecks.tsx:435:80)
+    at UserTruckChecks (src/components/UserTruckChecks.tsx:424:37)
+    at UserDashboard (src/components/UserDashboard.tsx:971:21)
+    at DashboardPage (src\app\dashboard\page.tsx:34:16)
+
+## Code Frame
+  446 |                                         <div className="flex justify-between items-end text-sm text-slate-400">
+  447 |                                             <div>
+> 448 |                                                 <div className="flex items-center gap-1.5 mb-1"><Calendar className="w-3.5 h-3.5" /> {format(new Date(r.createdAt), 'MMM d, yyyy')}</div>
+      |                                                                                                  ^
+  449 |                                                 <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {format(new Date(r.createdAt), 'HH:mm')}</div>
+  450 |                                             </div>
+  451 |                                         </div>
+
+Next.js version: 16.1.6 (Turbopack)
+
+---
+
+On the admin side give me an option that allows to see the uploaded photos for truck check reports and download them or delete them to open space in the server. Also limit the size of the files that can be uploaded to 5 MB per file, and also when the users are looking at the truck check report, let them click on the image to show it in a bigger size, but then give them an x on where the big image is looking so they can go back to the report, this is in case the users want to look at the image bigger than what shows by default on the form. This needs to be highly optimized for mobile as users will most likely fill these reports on their phone.
+
+--
+
+Allow admins to add an optional phone number, an optional start date and a station assignment based on the stations that exist in the system to the firefighters profile, then add a directory option on the user dashboard that allows to see a list of all firefighters with the format: RadioID, Name, Role, Station, phone number and start date. This only shows active firefighters, not archived ones. If you can in the admin directory add a functionality to label a firefighter to be hidden in case we don't want to display their information publicly in the directory, but it should not affect any other functionality for the firefighter. In this firefighter directory show an element per station that groups all members of that station and then sort them by role. If possible somewhere allow the admin to show what roles should display first that way Chief and Command can be listed first, firefighters second, support 3rd and so on. 
+
+--
+
+Station distribution and duty assignment for the quarter and for the day
+
+Make the assignments a dynamic category that can be created, edited or delete as well. Then make a dynamic statio duties
+
+
+Create a new training tab in both the user dashboard and the admin portal that acts like a forum, where admins can create categories, and inside each category posts. Make it so admins can edit and delete anything they create, and for users they can only see posts marked as active. The posts can be private in draft, and when done they can be updated to active so it shows for the rest of the users. The admin can choose a post to allow answers from users or no replies available. Admins are able to delete any posts, everyone is able to delete or edit their own posts or responses. Make it so in posts when a link is posted it can become a clickable URL. Track this by using the user radio ID. 
+
+---
+Station assignments: Quarterly for truck checks and daily for responses, add station duties as well, make these dynamic.
+
+Call notes: Notes that everyone can send or delete
+
+
+--
+
+Add a extra selection button after submitting the login to the dashboard (so validation of radio ID and password if there is any) that checks if the user is an admin give them 2 buttons, one to log into the user dashboard, and one to log into the admin dashboard and the route them accordingly.
+
+
+
+

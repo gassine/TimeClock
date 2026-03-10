@@ -115,7 +115,7 @@ type AdminDashboardProps = {
 };
 
 export default function AdminDashboard({ initialFirefighters, initialRoles, initialStations, initialShifts, currentUser }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'shifts' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks' | 'directory-settings' | 'training'>('reports');
+    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'shifts' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks' | 'directory-settings' | 'training' | 'notices'>('reports');
 
     // Data States
     const [firefighters, setFirefighters] = useState<Firefighter[]>(initialFirefighters);
@@ -126,6 +126,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
     const [requests, setRequests] = useState<any[]>([]);
     const [directorySettings, setDirectorySettings] = useState<DirectorySettings | null>(null);
+    const [noticeSettings, setNoticeSettings] = useState<{ everyoneCanPost: boolean; everyoneCanDelete: boolean }>({ everyoneCanPost: false, everyoneCanDelete: false });
 
     // Issue State
     const [issues, setIssues] = useState<Issue[]>([]);
@@ -342,6 +343,9 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
         if (activeTab === 'directory-settings') {
             fetchDirectorySettings();
+        }
+        if (activeTab === 'notices') {
+            fetchNoticeSettings();
         }
     }, [activeTab, issueSubTab, fieldReportTab]);
 
@@ -577,6 +581,45 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             if (Array.isArray(data)) setIssueStatuses(data);
         } catch (error) {
             console.error('Failed to fetch statuses');
+        }
+    };
+
+    const fetchNoticeSettings = async () => {
+        try {
+            const res = await fetch('/api/notices/settings');
+            if (res.ok) {
+                const data = await res.json();
+                setNoticeSettings(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch notice settings', error);
+        }
+    };
+
+    const handleUpdateNoticeSettings = async (updates: Partial<{ everyoneCanPost: boolean; everyoneCanDelete: boolean }>) => {
+        setLoading(true);
+        try {
+            const newSettings = { ...noticeSettings, ...updates };
+            // Optimistic update
+            setNoticeSettings(newSettings);
+
+            const res = await fetch('/api/notices/settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+            if (res.ok) {
+                setMessage('Notice settings updated successfully');
+            } else {
+                setMessage('Failed to update notice settings');
+                fetchNoticeSettings(); // Revert on failure
+            }
+        } catch (error) {
+            console.error('Failed to update notice settings:', error);
+            setMessage('Error updating settings');
+            fetchNoticeSettings();
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1325,6 +1368,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     { id: 'shifts', label: 'Shifts', icon: Clock, badge: null },
                                     { id: 'apparatus', label: 'Apparatus', icon: Truck, badge: null },
                                     { id: 'directory-settings', label: 'Directory', icon: Eye, badge: null },
+                                    { id: 'notices', label: 'Notices', icon: AlertTriangle, badge: null },
                                     { id: 'logs', label: 'Audit Logs', icon: List, badge: null },
                                 ].map((tab) => (
                                     <button
@@ -2763,6 +2807,55 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                 />
                             )}
 
+                        </div>
+                    )}
+
+                    {/* NOTICES SETTINGS TAB */}
+                    {activeTab === 'notices' && (
+                        <div className="space-y-8 animate-in fade-in duration-300">
+                            <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl max-w-2xl mx-auto">
+                                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-700">
+                                    <AlertTriangle className="w-6 h-6 text-blue-400" />
+                                    <h2 className="text-xl font-bold">Important Notices Settings</h2>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <p className="text-slate-400 text-sm mb-4">
+                                        Configure who can post and delete messages in the Notices Section of the User Dashboard. As an admin, you will always have these privileges regardless of these settings.
+                                    </p>
+
+                                    <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                                        <div>
+                                            <h3 className="font-bold text-slate-200">Everyone Can Post</h3>
+                                            <p className="text-xs text-slate-500 mt-1">Allow all users to create new notices.</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleUpdateNoticeSettings({ everyoneCanPost: !noticeSettings.everyoneCanPost })}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${noticeSettings.everyoneCanPost ? 'bg-blue-600' : 'bg-slate-600'}`}
+                                        >
+                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${noticeSettings.everyoneCanPost ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center justify-between p-4 bg-slate-900/50 rounded-xl border border-slate-700">
+                                        <div>
+                                            <h3 className="font-bold text-slate-200">Everyone Can Delete</h3>
+                                            <p className="text-xs text-slate-500 mt-1">Allow all users to delete ANY notice (including those posted by admins).</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleUpdateNoticeSettings({ everyoneCanDelete: !noticeSettings.everyoneCanDelete })}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 ${noticeSettings.everyoneCanDelete ? 'bg-blue-600' : 'bg-slate-600'}`}
+                                        >
+                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${noticeSettings.everyoneCanDelete ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
+                                    </div>
+
+                                    <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-sm text-blue-200 flex items-start gap-3">
+                                        <AlertTriangle className="w-5 h-5 text-blue-400 shrink-0" />
+                                        <p>Note: Users can always delete their own notices if they were the author.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
 
