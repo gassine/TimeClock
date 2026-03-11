@@ -205,7 +205,7 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
     if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-500" /></div>;
 
     // ----- FULL POST VIEW -----
-    if (activePost) {
+    if (activePost && !isComposing) {
         return (
             <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <button

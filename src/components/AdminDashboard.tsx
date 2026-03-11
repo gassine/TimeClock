@@ -2190,8 +2190,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     {/* All Personnel Card */}
                                     {(() => {
                                         const totalMs = Object.values(summaryStats).reduce((acc, curr) => acc + curr.totalMs, 0);
-                                        // Use the fetched unique report count instead of summing user participations
-                                        const totalCalls = totalReportsCount;
+                                        const totalCalls = Object.values(callCounts).reduce((acc, count) => acc + count, 0);
                                         const totalShifts = Object.values(summaryStats).reduce((acc, curr) => acc + curr.count, 0);
 
                                         const totalHours = totalMs / (1000 * 60 * 60);
