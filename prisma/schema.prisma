@@ -495,9 +495,10 @@ model AssignmentCategory {
   name      String
   date      DateTime? // Optional date for "Today's Assignments" or similar
   endDate   DateTime? // Optional end date for a range
-  
+  order     Int      @default(0)
+
   items     AssignmentItem[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -506,11 +507,12 @@ model AssignmentItem {
   id         String   @id @default(cuid())
   categoryId String
   category   AssignmentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
+
   task       String   // e.g., "Engine 9 Truck check"
   notes      String?  // Optional notes
   assignedTo String   @default("[]") // JSON string of assignee objects or strings e.g. [{type: 'radioId', value: '1235'}, {type: 'everyone'}]
-  
+  order      Int      @default(0)
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }

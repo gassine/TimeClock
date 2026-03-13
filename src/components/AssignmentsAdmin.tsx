@@ -1,10 +1,57 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, Trash2, Calendar, Users, X, Check, Save, Loader2, ListTodo, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calendar, Users, X, Save, Loader2, ListTodo, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    SortableContext,
+    useSortable,
+    verticalListSortingStrategy,
+    arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type Assignee = { type: 'radioId' | 'everyone' | 'text', value: string, name?: string };
+
+// Sortable wrapper for a category row
+function SortableCategory({ cat, children }: { cat: any; children: (dragHandleProps: any) => React.ReactNode }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: cat.id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 10 : undefined,
+    };
+    return (
+        <div ref={setNodeRef} style={style}>
+            {children({ attributes, listeners })}
+        </div>
+    );
+}
+
+// Sortable wrapper for an item row
+function SortableItem({ item, children }: { item: any; children: (dragHandleProps: any) => React.ReactNode }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 10 : undefined,
+    };
+    return (
+        <div ref={setNodeRef} style={style}>
+            {children({ attributes, listeners })}
+        </div>
+    );
+}
 
 export default function AssignmentsAdmin({ firefighters }: { firefighters: any[] }) {
     const [categories, setCategories] = useState<any[]>([]);
@@ -28,6 +75,9 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
     const [activeSearch, setActiveSearch] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // DnD sensors
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
     useEffect(() => {
         fetchCategories();
@@ -55,13 +105,53 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
         setExpandedCategories(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    // --- Category DnD ---
+    const handleCategoryDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const oldIndex = categories.findIndex(c => c.id === active.id);
+        const newIndex = categories.findIndex(c => c.id === over.id);
+        const reordered = arrayMove(categories, oldIndex, newIndex);
+        setCategories(reordered);
+
+        await fetch('/api/assignments/categories/reorder', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reordered.map((c, i) => ({ id: c.id, order: i }))),
+        });
+    };
+
+    // --- Item DnD ---
+    const handleItemDragEnd = async (event: DragEndEvent, catId: string) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const cat = categories.find(c => c.id === catId);
+        if (!cat) return;
+
+        const oldIndex = cat.items.findIndex((item: any) => item.id === active.id);
+        const newIndex = cat.items.findIndex((item: any) => item.id === over.id);
+        const reorderedItems = arrayMove(cat.items, oldIndex, newIndex);
+
+        setCategories(prev =>
+            prev.map(c => c.id === catId ? { ...c, items: reorderedItems } : c)
+        );
+
+        await fetch('/api/assignments/items/reorder', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(reorderedItems.map((item: any, i: number) => ({ id: item.id, order: i }))),
+        });
+    };
+
     // Category Handlers
     const saveCategory = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             const url = isEditingCat ? `/api/assignments/categories/${catForm.id}` : '/api/assignments/categories';
             const method = isEditingCat ? 'PUT' : 'POST';
-            
+
             const payload = {
                 name: catForm.name,
                 date: catForm.date || null,
@@ -146,8 +236,8 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
     const getFilteredFirefighters = () => {
         if (!searchTerm) return [];
         const lower = searchTerm.toLowerCase();
-        return firefighters.filter(f => 
-            f.name.toLowerCase().includes(lower) || 
+        return firefighters.filter(f =>
+            f.name.toLowerCase().includes(lower) ||
             (f.pin && f.pin.toLowerCase().includes(lower))
         );
     };
@@ -181,7 +271,6 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
                 setHighlightedIndex(prev => {
                     if (prev === null) return 0;
                     if (prev === filteredFFs.length - 1) {
-                        // At last item — select it and clear
                         const ff = filteredFFs[prev];
                         addAssigneeType('radioId', ff.pin, ff.name);
                         return null;
@@ -201,7 +290,6 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
                 const ff = filteredFFs[highlightedIndex];
                 addAssigneeType('radioId', ff.pin, ff.name);
             } else if (searchTerm.trim() !== '') {
-                // Check if exact match exists, else add as free text
                 const exactMatch = filteredFFs.find((f: any) => f.pin === searchTerm || f.name.toLowerCase() === searchTerm.toLowerCase());
                 if (exactMatch) {
                     addAssigneeType('radioId', exactMatch.pin, exactMatch.name);
@@ -219,7 +307,6 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
             <span key={idx} className="inline-flex items-center gap-1.5 bg-blue-600/20 text-blue-300 border border-blue-500/30 px-3 py-1 rounded-full text-sm font-medium">
                 {a.type === 'everyone' ? <Users className="w-3.5 h-3.5" /> : null}
                 {a.name || a.value}
-                {/* Only show delete button if we are in edit mode of the item form */}
                 {isEditingItem && (
                     <button type="button" onClick={() => removeAssignee(idx)} className="hover:bg-blue-500/30 rounded-full p-0.5 ml-1 transition-colors">
                         <X className="w-3 h-3" />
@@ -241,7 +328,7 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
                     <p className="text-slate-400 text-sm mt-1">Create and manage task categories and assignments.</p>
                 </div>
                 {!isAddingCat && !isEditingCat && (
-                    <button 
+                    <button
                         onClick={() => {
                             setCatForm({ id: '', name: '', date: '', endDate: '' });
                             setIsAddingCat(true);
@@ -260,31 +347,31 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
                     <form onSubmit={saveCategory} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-1">Category Name *</label>
-                            <input 
+                            <input
                                 required
                                 placeholder="e.g., This Quarter Assignments"
-                                value={catForm.name} 
+                                value={catForm.name}
                                 onChange={e => setCatForm({...catForm, name: e.target.value})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white" 
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white"
                             />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-1">Start Date (Optional)</label>
-                                <input 
+                                <input
                                     type="date"
-                                    value={catForm.date ? new Date(catForm.date).toISOString().split('T')[0] : ''} 
+                                    value={catForm.date ? new Date(catForm.date).toISOString().split('T')[0] : ''}
                                     onChange={e => setCatForm({...catForm, date: e.target.value})}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark]" 
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark]"
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-1">End Date (Optional)</label>
-                                <input 
+                                <input
                                     type="date"
-                                    value={catForm.endDate ? new Date(catForm.endDate).toISOString().split('T')[0] : ''} 
+                                    value={catForm.endDate ? new Date(catForm.endDate).toISOString().split('T')[0] : ''}
                                     onChange={e => setCatForm({...catForm, endDate: e.target.value})}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark]" 
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark]"
                                 />
                             </div>
                         </div>
@@ -298,84 +385,194 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
                 </div>
             )}
 
-            {/* Categories List */}
-            <div className="space-y-4">
-                {categories.length === 0 && !loading && !isAddingCat && (
-                    <div className="text-center py-12 bg-slate-800/50 rounded-2xl border border-slate-700 border-dashed">
-                        <ListTodo className="w-12 h-12 mx-auto text-slate-600 mb-4" />
-                        <h3 className="text-lg font-medium text-slate-300">No Assignments Yet</h3>
-                        <p className="text-slate-500 max-w-sm mx-auto mt-2 mb-6">Create your first category to start managing tasks and assignments for your team.</p>
-                    </div>
-                )}
+            {/* Categories List with DnD */}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleCategoryDragEnd}>
+                <SortableContext items={categories.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-4">
+                        {categories.length === 0 && !loading && !isAddingCat && (
+                            <div className="text-center py-12 bg-slate-800/50 rounded-2xl border border-slate-700 border-dashed">
+                                <ListTodo className="w-12 h-12 mx-auto text-slate-600 mb-4" />
+                                <h3 className="text-lg font-medium text-slate-300">No Assignments Yet</h3>
+                                <p className="text-slate-500 max-w-sm mx-auto mt-2 mb-6">Create your first category to start managing tasks and assignments for your team.</p>
+                            </div>
+                        )}
 
-                {categories.map(cat => (
-                    <div key={cat.id} className="bg-slate-800 rounded-2xl border border-slate-700 shadow-sm overflow-hidden">
-                        {/* Category Header */}
-                        <div 
-                            className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-700/30 transition-colors"
-                            onClick={() => toggleCategory(cat.id)}
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className={`p-2 rounded-lg ${expandedCategories[cat.id] ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>
-                                    {expandedCategories[cat.id] ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-white leading-tight">{cat.name}</h3>
-                                    {(cat.date || cat.endDate) && (
-                                        <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {cat.date && format(new Date(cat.date), 'MMM d, yyyy')}
-                                            {cat.date && cat.endDate && ' - '}
-                                            {cat.endDate && format(new Date(cat.endDate), 'MMM d, yyyy')}
+                        {categories.map(cat => (
+                            <SortableCategory key={cat.id} cat={cat}>
+                                {({ attributes, listeners }) => (
+                                    <div className="bg-slate-800 rounded-2xl border border-slate-700 shadow-sm overflow-hidden">
+                                        {/* Category Header */}
+                                        <div
+                                            className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-700/30 transition-colors"
+                                            onClick={() => toggleCategory(cat.id)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                {/* Drag handle */}
+                                                <button
+                                                    type="button"
+                                                    {...attributes}
+                                                    {...listeners}
+                                                    onClick={e => e.stopPropagation()}
+                                                    className="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-300 transition-colors shrink-0"
+                                                    title="Drag to reorder"
+                                                >
+                                                    <GripVertical className="w-5 h-5" />
+                                                </button>
+                                                <div className={`p-2 rounded-lg ${expandedCategories[cat.id] ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>
+                                                    {expandedCategories[cat.id] ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-white leading-tight">{cat.name}</h3>
+                                                    {(cat.date || cat.endDate) && (
+                                                        <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1">
+                                                            <Calendar className="w-3 h-3" />
+                                                            {cat.date && format(new Date(cat.date), 'MMM d, yyyy')}
+                                                            {cat.date && cat.endDate && ' - '}
+                                                            {cat.endDate && format(new Date(cat.endDate), 'MMM d, yyyy')}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                <span className="text-xs bg-slate-700 px-2 py-1 rounded-full text-slate-300 font-medium mr-2">
+                                                    {cat.items?.length || 0} Tasks
+                                                </span>
+                                                <button
+                                                    onClick={() => {
+                                                        setCatForm({
+                                                            id: cat.id,
+                                                            name: cat.name,
+                                                            date: cat.date || '',
+                                                            endDate: cat.endDate || ''
+                                                        });
+                                                        setIsEditingCat(true);
+                                                        setIsAddingCat(false);
+                                                    }}
+                                                    className="p-2 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteCategory(cat.id)}
+                                                    className="p-2 hover:bg-red-900/30 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                <span className="text-xs bg-slate-700 px-2 py-1 rounded-full text-slate-300 font-medium mr-2">
-                                    {cat.items?.length || 0} Tasks
-                                </span>
-                                <button 
-                                    onClick={() => {
-                                        setCatForm({ 
-                                            id: cat.id, 
-                                            name: cat.name, 
-                                            date: cat.date || '', 
-                                            endDate: cat.endDate || '' 
-                                        });
-                                        setIsEditingCat(true);
-                                        setIsAddingCat(false);
-                                    }}
-                                    className="p-2 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition-colors"
-                                >
-                                    <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button 
-                                    onClick={() => deleteCategory(cat.id)}
-                                    className="p-2 hover:bg-red-900/30 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </div>
 
-                        {/* Items Section */}
-                        {expandedCategories[cat.id] && (
-                            <div className="border-t border-slate-700 p-5 bg-slate-900/50 space-y-4">
-                                
-                                {cat.items?.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {cat.items.map((item: any) => {
-                                            const assignees: Assignee[] = item.assignedTo ? JSON.parse(item.assignedTo) : [];
-                                            
-                                            // Render Editing Item View
-                                            if (isEditingItem && itemForm.id === item.id) {
-                                                return (
-                                                    <div key={item.id} className="bg-slate-800 border border-blue-500/50 rounded-xl p-4 shadow-lg ring-1 ring-blue-500/20">
-                                                        <ItemFormContent 
-                                                            itemForm={itemForm} 
-                                                            setItemForm={setItemForm} 
-                                                            saveItem={saveItem} 
+                                        {/* Items Section */}
+                                        {expandedCategories[cat.id] && (
+                                            <div className="border-t border-slate-700 p-5 bg-slate-900/50 space-y-4">
+
+                                                {cat.items?.length > 0 ? (
+                                                    <DndContext
+                                                        sensors={sensors}
+                                                        collisionDetection={closestCenter}
+                                                        onDragEnd={e => handleItemDragEnd(e, cat.id)}
+                                                    >
+                                                        <SortableContext items={cat.items.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
+                                                            <div className="space-y-3">
+                                                                {cat.items.map((item: any) => {
+                                                                    const assignees: Assignee[] = item.assignedTo ? JSON.parse(item.assignedTo) : [];
+
+                                                                    if (isEditingItem && itemForm.id === item.id) {
+                                                                        return (
+                                                                            <div key={item.id} className="bg-slate-800 border border-blue-500/50 rounded-xl p-4 shadow-lg ring-1 ring-blue-500/20">
+                                                                                <ItemFormContent
+                                                                                    itemForm={itemForm}
+                                                                                    setItemForm={setItemForm}
+                                                                                    saveItem={saveItem}
+                                                                                    setIsEditing={() => { setIsEditingItem(false); setIsAddingItem(false); }}
+                                                                                    filteredFFs={filteredFFs}
+                                                                                    searchTerm={searchTerm}
+                                                                                    setSearchTerm={setSearchTerm}
+                                                                                    activeSearch={activeSearch}
+                                                                                    setActiveSearch={setActiveSearch}
+                                                                                    handleKeyDown={handleKeyDown}
+                                                                                    addAssigneeType={addAssigneeType}
+                                                                                    removeAssignee={removeAssignee}
+                                                                                    highlightedIndex={highlightedIndex}
+                                                                                    setHighlightedIndex={setHighlightedIndex}
+                                                                                    inputRef={inputRef}
+                                                                                    error={itemError}
+                                                                                />
+                                                                            </div>
+                                                                        );
+                                                                    }
+
+                                                                    return (
+                                                                        <SortableItem key={item.id} item={item}>
+                                                                            {({ attributes: itemAttrs, listeners: itemListeners }) => (
+                                                                                <div className="bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl p-4 transition-all flex flex-col md:flex-row gap-4 items-start md:items-center">
+                                                                                    {/* Item drag handle */}
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        {...itemAttrs}
+                                                                                        {...itemListeners}
+                                                                                        className="cursor-grab active:cursor-grabbing p-1 text-slate-600 hover:text-slate-400 transition-colors shrink-0 self-start mt-1"
+                                                                                        title="Drag to reorder"
+                                                                                    >
+                                                                                        <GripVertical className="w-4 h-4" />
+                                                                                    </button>
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <h4 className="font-bold text-slate-200 text-lg">{item.task}</h4>
+                                                                                        {item.notes && <p className="text-sm text-slate-400 mt-1 line-clamp-2">{item.notes}</p>}
+                                                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                                                            {assignees.length > 0 ? (
+                                                                                                assignees.map((a, i) => renderAssigneeTag(a, i))
+                                                                                            ) : (
+                                                                                                <span className="text-xs text-slate-500 italic">Unassigned</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-1 shrink-0">
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                setItemForm({
+                                                                                                    id: item.id,
+                                                                                                    categoryId: cat.id,
+                                                                                                    task: item.task,
+                                                                                                    notes: item.notes || '',
+                                                                                                    assignedTo: assignees
+                                                                                                });
+                                                                                                setIsEditingItem(true);
+                                                                                                setActiveCategoryId(cat.id);
+                                                                                            }}
+                                                                                            className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+                                                                                            title="Edit Task"
+                                                                                        >
+                                                                                            <Edit2 className="w-4 h-4" />
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => deleteItem(item.id)}
+                                                                                            className="p-2 hover:bg-red-900/30 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
+                                                                                            title="Delete Task"
+                                                                                        >
+                                                                                            <Trash2 className="w-4 h-4" />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </SortableItem>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </SortableContext>
+                                                    </DndContext>
+                                                ) : (
+                                                    <div className="text-slate-500 text-center py-6 italic text-sm border border-slate-800 border-dashed rounded-xl">
+                                                        No tasks added to this category yet.
+                                                    </div>
+                                                )}
+
+                                                {/* Add New Item Form */}
+                                                {(isAddingItem || isEditingItem) && activeCategoryId === cat.id && itemForm.id === '' ? (
+                                                    <div className="bg-slate-800 border border-blue-500/50 rounded-xl p-4 shadow-lg ring-1 ring-blue-500/20 mt-4">
+                                                        <ItemFormContent
+                                                            itemForm={itemForm}
+                                                            setItemForm={setItemForm}
+                                                            saveItem={saveItem}
                                                             setIsEditing={() => { setIsEditingItem(false); setIsAddingItem(false); }}
                                                             filteredFFs={filteredFFs}
                                                             searchTerm={searchTerm}
@@ -391,129 +588,56 @@ export default function AssignmentsAdmin({ firefighters }: { firefighters: any[]
                                                             error={itemError}
                                                         />
                                                     </div>
-                                                );
-                                            }
-
-                                            // Render Read/Display Item View
-                                            return (
-                                                <div key={item.id} className="bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl p-4 transition-all flex flex-col md:flex-row gap-4 items-start md:items-center">
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="font-bold text-slate-200 text-lg">{item.task}</h4>
-                                                        {item.notes && <p className="text-sm text-slate-400 mt-1 line-clamp-2">{item.notes}</p>}
-                                                        <div className="mt-3 flex flex-wrap gap-2">
-                                                            {assignees.length > 0 ? (
-                                                                assignees.map((a, i) => renderAssigneeTag(a, i))
-                                                            ) : (
-                                                                <span className="text-xs text-slate-500 italic">Unassigned</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 shrink-0">
-                                                        <button 
+                                                ) : (
+                                                    !isEditingItem && !isAddingItem && (
+                                                        <button
                                                             onClick={() => {
-                                                                setItemForm({ 
-                                                                    id: item.id, 
-                                                                    categoryId: cat.id, 
-                                                                    task: item.task, 
-                                                                    notes: item.notes || '', 
-                                                                    assignedTo: assignees 
-                                                                });
-                                                                setIsEditingItem(true);
+                                                                setItemForm({ id: '', categoryId: cat.id, task: '', notes: '', assignedTo: [] });
                                                                 setActiveCategoryId(cat.id);
+                                                                setIsAddingItem(true);
+                                                                setIsEditingItem(false);
+                                                                setItemError(null);
                                                             }}
-                                                            className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
-                                                            title="Edit Task"
+                                                            className="w-full py-3 border border-slate-700 border-dashed rounded-xl text-slate-400 hover:text-blue-400 hover:border-blue-500/50 hover:bg-blue-500/5 flex items-center justify-center gap-2 font-medium transition-all"
                                                         >
-                                                            <Edit2 className="w-4 h-4" />
+                                                            <Plus className="w-4 h-4" /> Add Task
                                                         </button>
-                                                        <button 
-                                                            onClick={() => deleteItem(item.id)}
-                                                            className="p-2 hover:bg-red-900/30 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
-                                                            title="Delete Task"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="text-slate-500 text-center py-6 italic text-sm border border-slate-800 border-dashed rounded-xl">
-                                        No tasks added to this category yet.
+                                                    )
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
-
-                                {/* Add New Item Form for this Category */}
-                                {(isAddingItem || isEditingItem) && activeCategoryId === cat.id && itemForm.id === '' ? (
-                                    <div className="bg-slate-800 border border-blue-500/50 rounded-xl p-4 shadow-lg ring-1 ring-blue-500/20 mt-4">
-                                        <ItemFormContent 
-                                            itemForm={itemForm} 
-                                            setItemForm={setItemForm} 
-                                            saveItem={saveItem} 
-                                            setIsEditing={() => { setIsEditingItem(false); setIsAddingItem(false); }}
-                                            filteredFFs={filteredFFs}
-                                            searchTerm={searchTerm}
-                                            setSearchTerm={setSearchTerm}
-                                            activeSearch={activeSearch}
-                                            setActiveSearch={setActiveSearch}
-                                            handleKeyDown={handleKeyDown}
-                                            addAssigneeType={addAssigneeType}
-                                            removeAssignee={removeAssignee}
-                                            highlightedIndex={highlightedIndex}
-                                            setHighlightedIndex={setHighlightedIndex}
-                                            inputRef={inputRef}
-                                            error={itemError}
-                                        />
-                                    </div>
-                                ) : (
-                                    !isEditingItem && !isAddingItem && (
-                                        <button 
-                                            onClick={() => {
-                                                setItemForm({ id: '', categoryId: cat.id, task: '', notes: '', assignedTo: [] });
-                                                setActiveCategoryId(cat.id);
-                                                setIsAddingItem(true);
-                                                setIsEditingItem(false);
-                                                setItemError(null);
-                                            }}
-                                            className="w-full py-3 border border-slate-700 border-dashed rounded-xl text-slate-400 hover:text-blue-400 hover:border-blue-500/50 hover:bg-blue-500/5 flex items-center justify-center gap-2 font-medium transition-all"
-                                        >
-                                            <Plus className="w-4 h-4" /> Add Task
-                                        </button>
-                                    )
-                                )}
-
-                            </div>
-                        )}
+                            </SortableCategory>
+                        ))}
                     </div>
-                ))}
-            </div>
+                </SortableContext>
+            </DndContext>
         </div>
     );
 }
 
 // Subcomponent for the Item Form to avoid huge nesting
-function ItemFormContent({ 
+function ItemFormContent({
     itemForm, setItemForm, saveItem, setIsEditing, filteredFFs, searchTerm, setSearchTerm, activeSearch, setActiveSearch, handleKeyDown, addAssigneeType, removeAssignee, highlightedIndex, setHighlightedIndex, inputRef, error
 }: any) {
     return (
         <form onSubmit={saveItem} className="space-y-4">
             <h4 className="font-bold text-white mb-2">{itemForm.id ? 'Edit Task' : 'New Task'}</h4>
             <div>
-                <input 
+                <input
                     required
                     placeholder="Task name (e.g. Engine 9 Truck Check)"
-                    value={itemForm.task} 
+                    value={itemForm.task}
                     onChange={e => setItemForm({...itemForm, task: e.target.value})}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white font-medium" 
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white font-medium"
                 />
             </div>
-            
+
             {/* Assigned Personnel Component */}
             <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-700">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Assigned Personnel</label>
-                
-                {/* Current Assignees */}
+
                 {itemForm.assignedTo.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-4">
                         {itemForm.assignedTo.map((a: Assignee, i: number) => (
@@ -528,7 +652,6 @@ function ItemFormContent({
                     </div>
                 )}
 
-                {/* Autocomplete Input */}
                 <div className="flex flex-col sm:flex-row gap-3 relative">
                     <div className="relative flex-1">
                         <input
@@ -549,8 +672,8 @@ function ItemFormContent({
                         {activeSearch && searchTerm && (
                             <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl max-h-48 overflow-y-auto">
                                 {filteredFFs.map((ff: any, idx: number) => (
-                                    <div 
-                                        key={ff.id} 
+                                    <div
+                                        key={ff.id}
                                         onMouseDown={() => addAssigneeType('radioId', ff.pin, ff.name)}
                                         className={`px-3 py-2 cursor-pointer text-sm flex justify-between items-center ${highlightedIndex === idx ? 'bg-blue-600 text-white' : 'hover:bg-slate-700 text-slate-200'}`}
                                     >
@@ -559,7 +682,7 @@ function ItemFormContent({
                                     </div>
                                 ))}
                                 {filteredFFs.length === 0 && (
-                                    <div 
+                                    <div
                                         onMouseDown={() => addAssigneeType('text', searchTerm, searchTerm)}
                                         className="px-3 py-2 text-sm text-slate-300 hover:bg-slate-700 cursor-pointer flex items-center justify-between"
                                     >
@@ -570,17 +693,17 @@ function ItemFormContent({
                             </div>
                         )}
                     </div>
-                    
-                    <button 
-                        type="button" 
+
+                    <button
+                        type="button"
                         onClick={() => addAssigneeType('everyone', 'everyone', 'Everyone')}
                         disabled={itemForm.assignedTo.some((a: Assignee) => a.type === 'everyone')}
                         className="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                     >
                         <Users className="w-4 h-4" /> Everyone
                     </button>
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={() => {
                             if (searchTerm.trim()) addAssigneeType('text', searchTerm.trim(), searchTerm.trim());
                         }}
@@ -593,14 +716,14 @@ function ItemFormContent({
             </div>
 
             <div>
-                <textarea 
+                <textarea
                     placeholder="Optional notes or details about this task..."
-                    value={itemForm.notes} 
+                    value={itemForm.notes}
                     onChange={e => setItemForm({...itemForm, notes: e.target.value})}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none text-slate-300 min-h-[80px]" 
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none text-slate-300 min-h-[80px]"
                 />
             </div>
-            
+
             {error && (
                 <div className="text-red-400 bg-red-900/20 border border-red-500/30 rounded-lg px-4 py-2.5 text-sm">
                     {error}

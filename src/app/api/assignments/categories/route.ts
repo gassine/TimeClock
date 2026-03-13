@@ -6,10 +6,12 @@ export async function GET() {
 
         const categories = await prisma.assignmentCategory.findMany({
             include: {
-                items: true,
+                items: {
+                    orderBy: { order: 'asc' }
+                },
             },
             orderBy: [
-                { date: 'desc' },
+                { order: 'asc' },
                 { createdAt: 'desc' }
             ]
         });
@@ -33,8 +35,8 @@ export async function POST(req: Request) {
         const category = await prisma.assignmentCategory.create({
             data: {
                 name,
-                date: date ? new Date(date) : null,
-                endDate: endDate ? new Date(endDate) : null,
+                date: date ? new Date(date + 'T12:00:00.000Z') : null,
+                endDate: endDate ? new Date(endDate + 'T12:00:00.000Z') : null,
             },
             include: {
                 items: true,

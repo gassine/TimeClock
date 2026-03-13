@@ -92,38 +92,32 @@ export default function AssignmentsView() {
                             </div>
                         </div>
 
-                        {/* Assignments List inside the element */}
-                        <div className="pl-0 md:pl-16 space-y-4">
+                        {/* Assignments List inside the element — wrapped in a category background */}
+                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 space-y-3">
                             {cat.items?.length > 0 ? (
                                 cat.items.map((item: any) => {
                                     const assignees: Assignee[] = item.assignedTo ? JSON.parse(item.assignedTo) : [];
-                                    
-                                    return (
-                                        <div key={item.id} className="group relative bg-slate-800/40 hover:bg-slate-800/80 backdrop-blur-sm border border-slate-700/60 hover:border-blue-500/30 rounded-2xl p-5 md:p-6 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-blue-900/10">
-                                            
-                                            {/* decorative glowing dot on hover */}
-                                            <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden md:block"></div>
 
-                                            <div className="flex flex-col gap-4">
-                                                <h3 className="text-xl font-bold text-slate-100 group-hover:text-white transition-colors">
+                                    return (
+                                        <div key={item.id} className="group relative bg-slate-800/60 hover:bg-slate-800/90 backdrop-blur-sm border border-slate-700/60 hover:border-blue-500/30 rounded-xl p-4 md:p-5 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-blue-900/10">
+
+                                            <div className="flex flex-col gap-3">
+                                                <h3 className="text-lg font-bold text-slate-100 group-hover:text-white transition-colors">
                                                     {item.task}
                                                 </h3>
 
-                                                <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-700/30">
-                                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Assigned To</div>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {assignees.length > 0 ? (
-                                                            assignees.map((a, i) => renderAssigneeTag(a, i))
-                                                        ) : (
-                                                            <span className="text-sm text-slate-500 italic">Unassigned</span>
-                                                        )}
-                                                    </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {assignees.length > 0 ? (
+                                                        assignees.map((a, i) => renderAssigneeTag(a, i))
+                                                    ) : (
+                                                        <span className="text-sm text-slate-500 italic">Unassigned</span>
+                                                    )}
                                                 </div>
 
                                                 {item.notes && (
                                                     <div className="flex gap-3 text-slate-300 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 font-medium leading-relaxed">
                                                         <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                                                        <p>{item.notes}</p>
+                                                        <p className="whitespace-pre-wrap">{item.notes}</p>
                                                     </div>
                                                 )}
                                             </div>
@@ -131,7 +125,7 @@ export default function AssignmentsView() {
                                     );
                                 })
                             ) : (
-                                <div className="bg-slate-800/20 border border-slate-700/50 border-dashed rounded-2xl p-8 text-center text-slate-500">
+                                <div className="border border-slate-700/50 border-dashed rounded-xl p-6 text-center text-slate-500">
                                     <p>No tasks found in this category.</p>
                                 </div>
                             )}

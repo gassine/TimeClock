@@ -11,8 +11,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             where: { id },
             data: {
                 name: name !== undefined ? name : undefined,
-                date: date ? new Date(date) : date === null ? null : undefined,
-                endDate: endDate ? new Date(endDate) : endDate === null ? null : undefined,
+                date: date ? new Date(date + 'T12:00:00.000Z') : date === null ? null : undefined,
+                endDate: endDate ? new Date(endDate + 'T12:00:00.000Z') : endDate === null ? null : undefined,
             },
             include: {
                 items: true,
