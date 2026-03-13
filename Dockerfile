@@ -4,7 +4,7 @@ FROM node:20-alpine AS base
 # Install dependencies only when needed
 FROM base AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat su-exec
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
@@ -63,11 +63,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 # This prevents npx from downloading incompatible versions or failing to find tsx
 RUN npm install -g prisma@6 tsx
 
-# Create the db and uploads directories and set permissions
+# Create the db directory and set permissions
 RUN mkdir -p /app/db && chown nextjs:nodejs /app/db
-RUN mkdir -p /app/public/uploads && chown nextjs:nodejs /app/public/uploads
 
-USER nextjs
+# Copy entrypoint — runs as root, fixes upload dir permissions, then drops to nextjs
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 3000
 
@@ -75,4 +76,4 @@ ENV PORT 3000
 # set servername to 0.0.0.0 to avoid connection refused in docker
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+ENTRYPOINT ["/entrypoint.sh"]
