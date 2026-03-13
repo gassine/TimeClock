@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, ListTodo, Loader2, Info, CheckCircle2 } from 'lucide-react';
+import { Calendar, Users, ListTodo, Loader2, Info, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 
 type Assignee = { type: 'radioId' | 'everyone' | 'text', value: string, name?: string };
@@ -9,6 +9,11 @@ type Assignee = { type: 'radioId' | 'everyone' | 'text', value: string, name?: s
 export default function AssignmentsView() {
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+    const toggleCollapse = (id: string) => {
+        setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     useEffect(() => {
         fetchCategories();
@@ -68,7 +73,10 @@ export default function AssignmentsView() {
                         <div className="absolute left-6 top-16 bottom-0 w-px bg-gradient-to-b from-blue-500/30 to-transparent -z-10 hidden md:block"></div>
                         
                         {/* Category Header Element */}
-                        <div className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-y md:border md:rounded-2xl border-slate-700 shadow-xl mb-6 flex flex-col md:flex-row md:items-center justify-between p-5 md:px-6">
+                        <div
+                            className="sticky top-0 z-10 bg-slate-900/80 backdrop-blur-xl border-y md:border md:rounded-2xl border-slate-700 shadow-xl mb-6 flex flex-col md:flex-row md:items-center justify-between p-5 md:px-6 cursor-pointer hover:bg-slate-800/60 transition-colors"
+                            onClick={() => toggleCollapse(cat.id)}
+                        >
                             <div className="flex items-center gap-4">
                                 <div className="bg-gradient-to-br from-blue-500 to-indigo-600 w-3 h-10 rounded-full shrink-0 shadow-lg shadow-blue-500/30"></div>
                                 <div>
@@ -85,15 +93,16 @@ export default function AssignmentsView() {
                                     )}
                                 </div>
                             </div>
-                            <div className="mt-4 md:mt-0 flex items-center gap-2">
+                            <div className="mt-4 md:mt-0 flex items-center gap-3">
                                 <span className="text-xs font-bold uppercase tracking-wider bg-slate-800 text-slate-400 px-3 py-1.5 rounded-full border border-slate-700">
                                     {cat.items?.length || 0} Tasks
                                 </span>
+                                {collapsed[cat.id] ? <ChevronDown className="w-5 h-5 text-slate-400" /> : <ChevronUp className="w-5 h-5 text-slate-400" />}
                             </div>
                         </div>
 
                         {/* Assignments List inside the element — wrapped in a category background */}
-                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 space-y-3">
+                        {!collapsed[cat.id] && <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4 space-y-3">
                             {cat.items?.length > 0 ? (
                                 cat.items.map((item: any) => {
                                     const assignees: Assignee[] = item.assignedTo ? JSON.parse(item.assignedTo) : [];
@@ -129,7 +138,7 @@ export default function AssignmentsView() {
                                     <p>No tasks found in this category.</p>
                                 </div>
                             )}
-                        </div>
+                        </div>}
                     </section>
                 ))}
             </div>
