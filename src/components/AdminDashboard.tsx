@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, BookOpen, Truck, ChevronRight, ChevronDown, User, Shield, Briefcase, MapPin, Users, List, UserPlus, RefreshCw, GitPullRequest, Settings, Search, Filter, ChevronLeft, BarChart3, Loader2, Eye, EyeOff, Phone, Hash, Archive } from 'lucide-react';
+import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, BookOpen, Truck, ChevronRight, ChevronDown, User, Shield, Briefcase, MapPin, Users, List, UserPlus, RefreshCw, GitPullRequest, Settings, Search, Filter, ChevronLeft, BarChart3, Loader2, Eye, EyeOff, Phone, Hash, Archive, ListTodo } from 'lucide-react';
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import RequestDetailModal from './RequestDetailModal';
 import AdminTruckChecks from './AdminTruckChecks';
 import AdminTraining from './AdminTraining';
+import AssignmentsAdmin from './AssignmentsAdmin';
 import { format } from 'date-fns';
 import LogsTable from './LogsTable';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/utils';
@@ -115,7 +116,7 @@ type AdminDashboardProps = {
 };
 
 export default function AdminDashboard({ initialFirefighters, initialRoles, initialStations, initialShifts, currentUser }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'shifts' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks' | 'directory-settings' | 'training' | 'notices'>('reports');
+    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'shifts' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks' | 'directory-settings' | 'training' | 'notices' | 'assignments'>('reports');
 
     // Data States
     const [firefighters, setFirefighters] = useState<Firefighter[]>(initialFirefighters);
@@ -1336,6 +1337,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     { id: 'field-reports', label: 'Field Reports', icon: ClipboardList },
                                     { id: 'truck-checks', label: 'Truck Checks', icon: Truck },
                                     { id: 'training', label: 'Knowledge', icon: BookOpen },
+                                    { id: 'assignments', label: 'Assignments', icon: ListTodo },
                                 ].map((tab) => (
                                     <button
                                         key={tab.id}
@@ -1801,6 +1803,12 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     {activeTab === 'training' && (
                         <div className="animate-in fade-in duration-300">
                             <AdminTraining roles={roles} />
+                        </div>
+                    )}
+
+                    {activeTab === 'assignments' && (
+                        <div className="animate-in fade-in duration-300">
+                            <AssignmentsAdmin firefighters={firefighters} />
                         </div>
                     )}
 

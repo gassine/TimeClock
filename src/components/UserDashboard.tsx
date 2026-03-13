@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users, BookOpen } from 'lucide-react';
+import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users, BookOpen, ListTodo } from 'lucide-react';
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import UserTruckChecks from './UserTruckChecks';
 import UserTraining from './UserTraining';
+import AssignmentsView from './AssignmentsView';
 import NoticesSection from './NoticesSection';
 import { format } from 'date-fns';
 import { formatPhoneNumber } from '@/lib/utils';
@@ -97,7 +98,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
     const [editingIssue, setEditingIssue] = useState<{ id: string, title: string, description: string } | null>(null);
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks' | 'directory' | 'training'>('timesheet');
+    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks' | 'directory' | 'training' | 'assignments'>('timesheet');
 
     // Directory State
     const [directoryData, setDirectoryData] = useState<any[]>([]);
@@ -629,6 +630,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                     <Truck className="w-5 h-5 text-blue-400" />
                     Truck Checks
                 </button>
+                <button
+                    onClick={() => setActiveTab('assignments')}
+                    className={`pb-3 px-2 font-medium whitespace-nowrap transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'assignments' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}`}
+                >
+                    <ListTodo className="w-5 h-5 text-blue-400" />
+                    Assignments
+                </button>
             </div>
 
             {/* TIMESHEET TAB */}
@@ -1159,6 +1167,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             {activeTab === 'training' && (
                 <div className="animate-in fade-in duration-300">
                     <UserTraining currentUser={user} />
+                </div>
+            )}
+
+            {/* ASSIGNMENTS TAB */}
+            {activeTab === 'assignments' && (
+                <div className="animate-in fade-in duration-300">
+                    <AssignmentsView />
                 </div>
             )}
 
