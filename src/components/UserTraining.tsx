@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ChevronRight, MessageSquare, Pin, Calendar, Edit2, Archive, Loader2, ArrowLeft, Plus } from 'lucide-react';
+import { BookOpen, ChevronRight, MessageSquare, Pin, Calendar, Edit2, Trash2, Loader2, ArrowLeft, Plus } from 'lucide-react';
 import { TrainingCategory, TrainingPost, TrainingReply } from '@/types/training';
 import RichTextEditor from './RichTextEditor';
 
@@ -272,7 +272,7 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
                                         className="p-2 bg-red-900/30 hover:bg-red-600 rounded-lg text-red-400 hover:text-white transition-colors"
                                         title="Delete Post"
                                     >
-                                        <Archive className="w-4 h-4" />
+                                        <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
                             )}
@@ -324,7 +324,7 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
                                                     className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-400 transition-all"
                                                     title="Delete Reply"
                                                 >
-                                                    <Archive className="w-3 h-3" />
+                                                    <Trash2 className="w-3 h-3" />
                                                 </button>
                                             )}
                                         </div>
