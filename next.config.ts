@@ -18,6 +18,9 @@ const nextConfig: any = {
     // Limits build to 1 CPU core to prevent OOM kills
     workerThreads: false,
     cpus: 1,
+    serverActions: {
+      bodySizeLimit: '55mb',
+    },
   },
 };
 

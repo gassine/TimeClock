@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, ChevronRight, MessageSquare, Pin, Calendar, Edit2, Archive, Loader2, ArrowLeft, Plus } from 'lucide-react';
 import { TrainingCategory, TrainingPost, TrainingReply } from '@/types/training';
-import LinkifiedText from './LinkifiedText';
+import RichTextEditor from './RichTextEditor';
 
 export default function UserTraining({ currentUser }: { currentUser: any }) {
     const [categories, setCategories] = useState<TrainingCategory[]>([]);
@@ -13,7 +13,6 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
 
     // State for viewing/creating
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
     const [isComposing, setIsComposing] = useState(false);
 
     // Form State
@@ -98,23 +97,37 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
         }
     };
 
+    // Extract /uploads/training/ URLs from HTML for orphan cleanup
+    const extractTrainingUrls = (html: string): string[] => {
+        const matches = [...html.matchAll(/(?:src|href)="(\/uploads\/training\/[^"]+)"/g)];
+        return matches.map(m => m[1]);
+    };
+
+    const deleteOrphanFiles = async (oldContent: string, newContent: string) => {
+        const oldUrls = extractTrainingUrls(oldContent);
+        const newUrls = new Set(extractTrainingUrls(newContent));
+        const orphans = oldUrls.filter(url => !newUrls.has(url));
+        for (const url of orphans) {
+            const filename = url.split('/').pop();
+            if (filename) {
+                await fetch(`/api/images?filename=${encodeURIComponent(filename)}`, { method: 'DELETE' }).catch(() => {});
+            }
+        }
+    };
+
     const handleCreatePost = async (e: React.FormEvent, isDraft: boolean = false) => {
         e.preventDefault();
         if (!activeCategory) {
             alert("No category selected.");
             return;
         }
-        if (!composeTitle.trim() || !composeContent.trim()) {
+        if (!composeTitle.trim() || !composeContent.trim() || composeContent === '<p></p>') {
             alert("Please fill out both the title and the content before submitting.");
             return;
         }
 
         try {
-            console.log('Sending Post request...', { categoryId: activeCategory.id, title: composeTitle, isDraft });
-
-            // If editing an existing post, use PUT
             const isEditing = activePost !== null;
-            const url = '/api/training/posts';
             const method = isEditing ? 'PUT' : 'POST';
 
             const payload: any = {
@@ -123,14 +136,15 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
                 status: isDraft ? 'DRAFT' : 'ACTIVE',
             };
 
-            // Only attach categoryId if creating new (PUT doesn't need it)
             if (!isEditing) {
                 payload.categoryId = activeCategory.id;
             } else {
-                payload.id = activePost.id; // Send the ID for the PUT request
+                payload.id = activePost.id;
+                // Delete files that were removed during editing
+                await deleteOrphanFiles(activePost.content, composeContent);
             }
 
-            const res = await fetch(url, {
+            const res = await fetch('/api/training/posts', {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -198,9 +212,6 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
             return false;
         }
     };
-
-    // Derived counts
-    const totalUnread = posts.filter(p => p.isUnread).length;
 
     if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-blue-500" /></div>;
 
@@ -274,9 +285,7 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
                     </div>
 
                     <div className="p-6 md:p-8 text-slate-200">
-                        <div className="prose prose-invert max-w-none">
-                            <LinkifiedText text={activePost.content} />
-                        </div>
+                        <PostContent content={activePost.content} />
                     </div>
                 </article>
 
@@ -320,9 +329,7 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="text-slate-300">
-                                        <LinkifiedText text={reply.content} />
-                                    </div>
+                                    <div className="text-slate-300 text-sm whitespace-pre-wrap">{reply.content}</div>
                                 </div>
                             ))}
                         </div>
@@ -350,18 +357,19 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
 
     // ----- POST COMPOSITION FORM -----
     if (isComposing) {
+        const editorKey = activePost ? activePost.id : 'new';
         return (
             <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <button
                     onClick={() => setIsComposing(false)}
                     className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
                 >
-                    <ArrowLeft className="w-4 h-4" /> Cancel Creation
+                    <ArrowLeft className="w-4 h-4" /> Cancel
                 </button>
                 <div className="bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-xl">
                     <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                         <Edit2 className="text-blue-400" />
-                        New Post in <span className="text-slate-400 font-normal">{activeCategory?.name}</span>
+                        {activePost ? 'Edit Post' : <>New Post in <span className="text-slate-400 font-normal">{activeCategory?.name}</span></>}
                     </h2>
                     <form className="space-y-4">
                         <div>
@@ -374,12 +382,11 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
                             />
                         </div>
                         <div>
-                            <textarea
-                                required
-                                placeholder="Write your content here... URLs will automatically become clickable links."
-                                value={composeContent}
-                                onChange={e => setComposeContent(e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none min-h-[300px] font-mono text-sm leading-relaxed"
+                            <RichTextEditor
+                                key={editorKey}
+                                content={composeContent}
+                                onUpdate={setComposeContent}
+                                placeholder="Write your content here. Use the toolbar to format text, insert images, or attach files."
                             />
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
@@ -414,7 +421,6 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
                     Knowledge Base
                     {/* Simplified global unread badge if needed */}
                 </h3>
-
                 <button
                     onClick={() => {
                         setActiveCategory({
@@ -544,4 +550,55 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
             </div>
         </div>
     );
+}
+
+// Renders post content with image lightbox support
+function PostContent({ content }: { content: string }) {
+    const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+    const isHtml = content.trimStart().startsWith('<');
+
+    return (
+        <>
+            {isHtml ? (
+                <div
+                    className="post-content"
+                    dangerouslySetInnerHTML={{ __html: processContent(content) }}
+                    onClick={e => {
+                        const t = e.target as HTMLElement;
+                        if (t.tagName === 'IMG') setLightboxSrc((t as HTMLImageElement).src);
+                    }}
+                />
+            ) : (
+                <div className="post-content">
+                    <p className="whitespace-pre-wrap">{content}</p>
+                </div>
+            )}
+
+            {lightboxSrc && (
+                <div
+                    className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-6 cursor-zoom-out"
+                    onClick={() => setLightboxSrc(null)}
+                >
+                    <img
+                        src={lightboxSrc}
+                        alt="Full size"
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                    />
+                </div>
+            )}
+        </>
+    );
+}
+
+// Convert YouTube/Vimeo anchor tags to embedded iframes
+function processContent(html: string): string {
+    return html
+        .replace(
+            /<a[^>]*href="https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?(?:[^"]*&amp;)?v=|youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^"]*"[^>]*>.*?<\/a>/gi,
+            (_m, id) => `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${id}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
+        )
+        .replace(
+            /<a[^>]*href="https?:\/\/(?:www\.)?vimeo\.com\/(\d+)[^"]*"[^>]*>.*?<\/a>/gi,
+            (_m, id) => `<div class="video-embed"><iframe src="https://player.vimeo.com/video/${id}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`
+        );
 }

@@ -17,6 +17,8 @@ services:
     volumes:
       # Mount the 'db' directory to persist the SQLite database file
       - ./db:/app/db
+      # Mount the uploads directory to persist user-uploaded files (images, attachments)
+      - ./uploads:/app/public/uploads
     # You can add a healthcheck if desired
     # healthcheck:
     #   test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]

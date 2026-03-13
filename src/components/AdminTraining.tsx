@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, Plus, Settings, Eye, Users, AlertTriangle, Clock, MapPin, Search, MessageSquare, Trash2, Edit2, Pin, Archive, Unlock, Lock, RotateCcw, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import { BookOpen, Plus, Settings, Eye, AlertTriangle, MessageSquare, Trash2, Edit2, Pin, Archive, Unlock, Lock, RotateCcw, GripVertical, ChevronDown, ChevronRight, HardDrive } from 'lucide-react';
 import { TrainingCategory, TrainingPost, TrainingPostVersion } from '@/types/training';
+import TrainingFiles from './TrainingFiles';
 
 type Role = { id: string; name: string };
 
@@ -12,7 +13,7 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
     const [loading, setLoading] = useState(true);
 
     // UI State
-    const [viewMode, setViewMode] = useState<'CATEGORIES' | 'MODERATION'>('CATEGORIES');
+    const [viewMode, setViewMode] = useState<'CATEGORIES' | 'MODERATION' | 'FILES'>('CATEGORIES');
 
     // Category Modal
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -250,6 +251,13 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
                     <BookOpen className="w-4 h-4 inline-block mr-2" />
                     Content Moderation
                 </button>
+                <button
+                    onClick={() => setViewMode('FILES')}
+                    className={`px-4 py-2 font-medium rounded-lg transition-colors ${viewMode === 'FILES' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                >
+                    <HardDrive className="w-4 h-4 inline-block mr-2" />
+                    System Files
+                </button>
             </div>
 
             {/* CATEGORY MANAGER */}
@@ -410,6 +418,18 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
                 </div>
             )}
 
+            {/* SYSTEM FILES */}
+            {viewMode === 'FILES' && (
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                        <HardDrive className="text-blue-400" />
+                        System Files
+                    </h2>
+                    <p className="text-sm text-slate-400">Files uploaded to the knowledge base. Orphaned files are no longer referenced by any post and can be safely deleted.</p>
+                    <TrainingFiles />
+                </div>
+            )}
+
             {/* POST PREVIEW MODAL */}
             {viewingPost && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
@@ -429,9 +449,7 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
                             <button onClick={() => setViewingPost(null)} className="text-slate-400 hover:text-white text-xl">✕</button>
                         </div>
                         <hr className="border-slate-700" />
-                        <div className="prose prose-invert max-w-none text-slate-300 whitespace-pre-wrap text-sm leading-relaxed">
-                            {viewingPost.content}
-                        </div>
+                        <AdminPostContent content={viewingPost.content} />
                         <div className="flex items-center gap-3 text-xs text-slate-500 pt-4 border-t border-slate-700">
                             <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> {viewingPost._count?.replies || 0} Replies</span>
                             <span>{viewingPost.allowReplies ? 'Replies open' : 'Replies locked'}</span>
@@ -642,4 +660,13 @@ export default function AdminTraining({ roles }: { roles: Role[] }) {
             )}
         </div>
     );
+}
+
+// Renders post content in admin modals: HTML (rich text) or plain text (legacy)
+function AdminPostContent({ content }: { content: string }) {
+    const isHtml = content.trimStart().startsWith('<');
+    if (isHtml) {
+        return <div className="post-content text-sm" dangerouslySetInnerHTML={{ __html: content }} />;
+    }
+    return <div className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{content}</div>;
 }

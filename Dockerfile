@@ -63,8 +63,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 # This prevents npx from downloading incompatible versions or failing to find tsx
 RUN npm install -g prisma@6 tsx
 
-# Create the db directory and verify permissions
+# Create the db and uploads directories and set permissions
 RUN mkdir -p /app/db && chown nextjs:nodejs /app/db
+RUN mkdir -p /app/public/uploads && chown nextjs:nodejs /app/public/uploads
 
 USER nextjs
 
