@@ -30,7 +30,7 @@ RUN npx prisma generate
 # Explicitly set max_old_space_size to prevent allocating more than available RAM
 # Using 1536MB to be safe within a 2GB (RAM+Swap) environment
 ENV NODE_OPTIONS="--max-old-space-size=768"
-RUN npm run build -- --no-turbopack
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
