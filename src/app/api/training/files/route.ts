@@ -15,8 +15,11 @@ export async function GET() {
             throw e;
         }
 
-        // Load all post content to determine which files are in use
-        const posts = await prisma.trainingPost.findMany({ select: { content: true } });
+        // Load only non-deleted post content to determine which files are in use
+        const posts = await prisma.trainingPost.findMany({
+            where: { isDeleted: false },
+            select: { content: true },
+        });
         const allContent = posts.map(p => p.content).join('\n');
 
         const fileEntries = await Promise.all(
