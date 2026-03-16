@@ -110,7 +110,7 @@ export default function UserTraining({ currentUser }: { currentUser: any }) {
         for (const url of orphans) {
             const filename = url.split('/').pop();
             if (filename) {
-                await fetch(`/api/images?filename=${encodeURIComponent(filename)}`, { method: 'DELETE' }).catch(() => {});
+                await fetch(`/api/training/files?filename=${encodeURIComponent(filename)}`, { method: 'DELETE' }).catch(() => {});
             }
         }
     };

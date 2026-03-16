@@ -2,8 +2,26 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { logAdminAction } from '@/lib/logger';
+import { unlink } from 'fs/promises';
+import path from 'path';
 
 import jwt from 'jsonwebtoken';
+
+// Extract /uploads/training/ file URLs from HTML content
+function extractTrainingUrls(html: string): string[] {
+    return [...html.matchAll(/(?:src|href)="(\/uploads\/training\/[^"]+)"/g)].map(m => m[1]);
+}
+
+// Delete physical files referenced in post content (ignores missing files)
+async function deletePostFiles(content: string) {
+    const urls = extractTrainingUrls(content);
+    for (const url of urls) {
+        const filename = url.split('/').pop();
+        if (!filename) continue;
+        const filepath = path.join(process.cwd(), 'public', 'uploads', 'training', filename);
+        await unlink(filepath).catch(() => {});
+    }
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-this';
 
@@ -315,7 +333,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Forbidden - Cannot delete others posts' }, { status: 403 });
         }
 
-        // Technically we soft-delete here so we don't break database constraints visually immediately
+        // Soft-delete the post record
         const deleted = await prisma.trainingPost.update({
             where: { id },
             data: { isDeleted: true }
@@ -323,6 +341,30 @@ export async function DELETE(request: Request) {
 
         if (currentUser.isAdmin) {
             await logAdminAction('DELETE', 'TrainingPost', id, `Admin strictly soft deleted post: ${existingPost.title}`);
+        }
+
+        // Delete files referenced in the current post content
+        await deletePostFiles(existingPost.content);
+
+        // Also delete files that exist only in version history (not referenced by any live post)
+        const versions = await prisma.trainingPostVersion.findMany({
+            where: { postId: id },
+            select: { content: true },
+        });
+        const liveContent = await prisma.trainingPost.findMany({
+            where: { isDeleted: false },
+            select: { content: true },
+        });
+        const liveUrls = new Set(liveContent.flatMap(p => extractTrainingUrls(p.content)));
+        for (const version of versions) {
+            const versionUrls = extractTrainingUrls(version.content);
+            for (const url of versionUrls) {
+                if (!liveUrls.has(url)) {
+                    const filename = url.split('/').pop();
+                    if (!filename) continue;
+                    await unlink(path.join(process.cwd(), 'public', 'uploads', 'training', filename)).catch(() => {});
+                }
+            }
         }
 
         return NextResponse.json({ success: true, deletedId: deleted.id });
