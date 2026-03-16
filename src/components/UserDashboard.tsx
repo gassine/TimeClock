@@ -279,6 +279,9 @@ export default function UserDashboard({ user }: UserDashboardProps) {
 
     const formatTime = (timeStr: string) => {
         if (!timeStr) return '';
+        // Already in standard format (e.g., "1:31 PM") — return as-is
+        if (/am|pm/i.test(timeStr)) return timeStr;
+        // Legacy 24-hour format (e.g., "13:31") — convert
         const [hours, minutes] = timeStr.split(':');
         const h = parseInt(hours, 10);
         if (isNaN(h)) return timeStr;
@@ -787,7 +790,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                         </div>
                                         <div className="font-bold text-lg mb-1">{report.incidentType.name}</div>
                                         <div className="text-slate-400 text-sm flex items-center gap-2 mb-2">
-                                            <Calendar className="w-3 h-3" /> {format(new Date(report.date), 'MMM d, yyyy')}
+                                            <Calendar className="w-3 h-3" /> {format(new Date(report.date.slice(0, 10).replace(/-/g, '/')), 'MMM d, yyyy')}
                                             <Clock className="w-3 h-3 ml-2" /> {formatTime(report.alarmTime)}
                                         </div>
                                         <div className="text-slate-500 text-sm truncate">{report.location}</div>
@@ -829,7 +832,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                             </div>
                                             <div className="font-bold text-lg mb-1">{report.incidentType.name}</div>
                                             <div className="text-slate-400 text-sm flex items-center gap-2 mb-2">
-                                                <Calendar className="w-3 h-3" /> {format(new Date(report.date), 'MMM d, yyyy')}
+                                                <Calendar className="w-3 h-3" /> {format(new Date(report.date.slice(0, 10).replace(/-/g, '/')), 'MMM d, yyyy')}
                                                 <Clock className="w-3 h-3 ml-2" /> {formatTime(report.alarmTime)}
                                             </div>
                                             <div className="text-slate-500 text-sm truncate">{report.location}</div>

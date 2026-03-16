@@ -60,7 +60,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
                 ...(incidentSummary && { incidentSummary }),
                 ...(officerInCharge && { officerInCharge }),
                 ...(alarmTime && { alarmTime }),
-                ...(date && { date: new Date(date) }),
+                ...(date && { date: new Date(date + 'T12:00:00.000Z') }),
                 ...(typeof esoReportCompleted === 'boolean' && { esoReportCompleted }),
                 ...(body.assignedApparatus && {
                     assignedApparatus: {

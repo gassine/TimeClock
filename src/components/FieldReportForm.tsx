@@ -4,6 +4,155 @@ import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { X, Plus, Trash2, Save, Truck, Users, MapPin, Clock, FileText, CheckCircle, Loader2, Calendar } from 'lucide-react';
 
+// Converts any reasonable time input to "h:mm AM/PM" standard format.
+// Accepts: "13:31", "1331", "1:31 PM", "1:31pm", bare hours like "9", etc.
+function parseToStandardTime(input: string): string {
+    if (!input.trim()) return '';
+
+    // Already has AM/PM — normalize and return
+    const ampmMatch = input.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+    if (ampmMatch) {
+        const h = parseInt(ampmMatch[1]);
+        const m = parseInt(ampmMatch[2] ?? '0');
+        const period = ampmMatch[3].toUpperCase();
+        if (h >= 1 && h <= 12 && m >= 0 && m <= 59)
+            return `${h}:${m.toString().padStart(2, '0')} ${period}`;
+        return input;
+    }
+
+    // Parse 24-hour / military format
+    let h: number, m: number;
+    const colonMatch = input.trim().match(/^(\d{1,2}):(\d{2})$/);
+    const digits = input.replace(/\D/g, '');
+
+    if (colonMatch) {
+        h = parseInt(colonMatch[1]);
+        m = parseInt(colonMatch[2]);
+    } else if (digits.length === 4) {
+        h = parseInt(digits.slice(0, 2));
+        m = parseInt(digits.slice(2));
+    } else if (digits.length === 3) {
+        h = parseInt(digits[0]);
+        m = parseInt(digits.slice(1));
+    } else if (digits.length <= 2) {
+        h = parseInt(digits);
+        m = 0;
+    } else {
+        return input;
+    }
+
+    if (isNaN(h) || isNaN(m) || h > 23 || m > 59) return input;
+
+    const period = h < 12 ? 'AM' : 'PM';
+    const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${displayH}:${m.toString().padStart(2, '0')} ${period}`;
+}
+
+// Converts a HH:MM string (from type="time" picker) to standard time
+function hhmmToStandard(hhmm: string): string {
+    return parseToStandardTime(hhmm);
+}
+
+// Segmented time input: HH | MM | AM/PM with keyboard navigation and military time support
+function AlarmTimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const parsed = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    const h = parsed ? parseInt(parsed[1]) : 12;
+    const m = parsed ? parseInt(parsed[2]) : 0;
+    const p = (parsed ? parsed[3].toUpperCase() : 'AM') as 'AM' | 'PM';
+    const hasValue = !!parsed;
+
+    const [seg, setSeg] = useState<0 | 1 | 2>(0);
+    const [focused, setFocused] = useState(false);
+    const [hBuf, setHBuf] = useState('');
+    const [mBuf, setMBuf] = useState('');
+
+    const emit = (nh: number, nm: number, np: 'AM' | 'PM') =>
+        onChange(`${nh}:${nm.toString().padStart(2, '0')} ${np}`);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        const key = e.key;
+        if (key === 'ArrowLeft') {
+            e.preventDefault();
+            if (seg === 0 && hBuf) { const n = parseInt(hBuf); if (n >= 1 && n <= 12) emit(n, m, p); setHBuf(''); }
+            if (seg === 1 && mBuf) { const n = parseInt(mBuf); if (n <= 59) emit(h, n, p); setMBuf(''); }
+            setSeg(s => { if (s === 0) return 2; return (s - 1) as 0 | 1 | 2; });
+        } else if (key === 'ArrowRight') {
+            e.preventDefault();
+            if (seg === 0 && hBuf) { const n = parseInt(hBuf); if (n >= 1 && n <= 12) emit(n, m, p); setHBuf(''); }
+            if (seg === 1 && mBuf) { const n = parseInt(mBuf); if (n <= 59) emit(h, n, p); setMBuf(''); }
+            setSeg(s => { if (s === 2) return 0; return (s + 1) as 0 | 1 | 2; });
+        } else if (key === 'ArrowUp') {
+            e.preventDefault();
+            setHBuf(''); setMBuf('');
+            if (seg === 0) emit(h === 1 ? 12 : h - 1, m, p);
+            else if (seg === 1) emit(h, (m - 1 + 60) % 60, p);
+            else emit(h, m, p === 'AM' ? 'PM' : 'AM');
+        } else if (key === 'ArrowDown') {
+            e.preventDefault();
+            setHBuf(''); setMBuf('');
+            if (seg === 0) emit(h === 12 ? 1 : h + 1, m, p);
+            else if (seg === 1) emit(h, (m + 1) % 60, p);
+            else emit(h, m, p === 'AM' ? 'PM' : 'AM');
+        } else if (/^\d$/.test(key)) {
+            e.preventDefault();
+            if (seg === 0) {
+                const buf = hBuf + key;
+                const num = parseInt(buf);
+                if (buf.length === 1) {
+                    setHBuf(buf); // always wait for second digit
+                } else {
+                    if (num >= 13 && num <= 23) { emit(num - 12, m, 'PM'); setHBuf(''); setSeg(1); }
+                    else if (num >= 1 && num <= 12) { emit(num, m, p); setHBuf(''); setSeg(1); }
+                    else if (num === 0) { emit(12, m, 'AM'); setHBuf(''); setSeg(1); }
+                    else { setHBuf(''); } // invalid (24+) — clear, stay on hours
+                }
+            } else if (seg === 1) {
+                const buf = mBuf + key;
+                const num = parseInt(buf);
+                if (buf.length === 1) {
+                    setMBuf(buf); // always wait for second digit
+                } else {
+                    if (num <= 59) emit(h, num, p);
+                    setMBuf(''); setSeg(2);
+                }
+            }
+        } else if ((key === 'a' || key === 'A') && seg === 2) {
+            e.preventDefault(); emit(h, m, 'AM');
+        } else if ((key === 'p' || key === 'P') && seg === 2) {
+            e.preventDefault(); emit(h, m, 'PM');
+        }
+    };
+
+    const s = (i: 0 | 1 | 2) =>
+        `rounded px-1 ${focused && seg === i ? 'bg-blue-600 text-white' : 'text-white'}`;
+
+    return (
+        <div
+            tabIndex={0}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+                if (hBuf) { const n = parseInt(hBuf); if (n >= 1 && n <= 12) emit(n, m, p); }
+                if (mBuf) { const n = parseInt(mBuf); if (n <= 59) emit(h, n, p); }
+                setFocused(false); setHBuf(''); setMBuf('');
+            }}
+            onKeyDown={handleKeyDown}
+            className={`flex items-center w-full bg-slate-800 border rounded-lg px-4 py-2.5 pr-10 outline-none select-none cursor-default ${focused ? 'border-blue-500 ring-2 ring-blue-500' : 'border-slate-700'}`}
+        >
+            <span data-seg="0" onClick={() => setSeg(0)} className={s(0)}>
+                {hBuf ? hBuf.padEnd(2, '_') : hasValue ? h.toString().padStart(2, '0') : '--'}
+            </span>
+            <span className="text-slate-400 mx-0.5">:</span>
+            <span data-seg="1" onClick={() => setSeg(1)} className={`${s(1)} min-w-[2ch] text-center`}>
+                {mBuf ? mBuf.padEnd(2, '_') : hasValue ? m.toString().padStart(2, '0') : '--'}
+            </span>
+            <span className="text-slate-400 mx-1.5">&nbsp;</span>
+            <span data-seg="2" onClick={() => setSeg(2)} className={s(2)}>
+                {hasValue ? p : 'AM'}
+            </span>
+        </div>
+    );
+}
+
 type FieldReportFormProps = {
     initialData?: any;
     onSubmit: (data: any) => Promise<void>;
@@ -21,7 +170,7 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
     const [formData, setFormData] = useState({
         incidentTypeId: initialData?.incidentTypeId || '',
         date: initialData?.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        alarmTime: initialData?.alarmTime || '',
+        alarmTime: initialData?.alarmTime ? parseToStandardTime(initialData.alarmTime) : '',
         location: initialData?.location || '',
         district: initialData?.district || '',
         officerInCharge: initialData?.officerInCharge || '',
@@ -51,6 +200,19 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
     const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
     const isLocationInputFocused = useRef(false);
     const [userState, setUserState] = useState<string | null>(null);
+    const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+    const [lockedPersonnel, setLockedPersonnel] = useState<Set<string>>(() => {
+        // Pre-lock any personnel that already have a firefighterId from initialData
+        const locked = new Set<string>();
+        if (initialData?.assignedApparatus) {
+            initialData.assignedApparatus.forEach((app: any, aIdx: number) => {
+                app.personnel.forEach((p: any, pIdx: number) => {
+                    if (p.firefighterId) locked.add(`${aIdx}-${pIdx}`);
+                });
+            });
+        }
+        return locked;
+    });
     const dateInputRef = useRef<HTMLInputElement>(null);
     const alarmTimeInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +221,16 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
             .then(r => r.json())
             .then(d => { if (d.state) setUserState(d.state); })
             .catch(() => {});
+
+        // Request coarse geolocation (network-based, fast) for proximity sorting
+        if (typeof navigator !== 'undefined' && navigator.geolocation) {
+            const timeout = setTimeout(() => {}, 0); // no-op, just for scoping
+            navigator.geolocation.getCurrentPosition(
+                pos => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                () => {}, // silently ignore denial/error
+                { enableHighAccuracy: false, timeout: 3000, maximumAge: 300000 }
+            );
+        }
     }, []);
 
     const handleLocationSearch = (query: string) => {
@@ -73,7 +245,15 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                         ? `https://nominatim.openstreetmap.org/search?format=json&street=${encodeURIComponent(query)}&state=${encodeURIComponent(userState)}&country=us&limit=5&addressdetails=1`
                         : `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=us`;
                     const res = await fetch(url);
-                    const data = await res.json();
+                    let data = await res.json();
+                    // Sort by proximity if we have the user's coordinates
+                    if (userCoords && data.length > 1) {
+                        data = data.slice().sort((a: any, b: any) => {
+                            const dA = Math.hypot(parseFloat(a.lat) - userCoords.lat, parseFloat(a.lon) - userCoords.lng);
+                            const dB = Math.hypot(parseFloat(b.lat) - userCoords.lat, parseFloat(b.lon) - userCoords.lng);
+                            return dA - dB;
+                        });
+                    }
                     setLocationSuggestions(data);
                     if (isLocationInputFocused.current) {
                         setShowLocationDropdown(true);
@@ -145,6 +325,12 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
 
         if (!formData.incidentTypeId) {
             alert('Please select an Incident Type to save or submit this report.');
+            setSubmitting(false);
+            return;
+        }
+
+        if (statusName !== 'Draft' && !formData.alarmTime) {
+            alert('Please enter an Alarm Time.');
             setSubmitting(false);
             return;
         }
@@ -239,13 +425,7 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
 
         // Shift searchTerms keys for this apparatus
         const newSearchTerms = { ...searchTerms };
-        // Delete the removed item's term
         delete newSearchTerms[`${appIndex}-${pIndex}`];
-
-        // Shift subsequent items down: k -> k-1
-        // We need to iterate through existing keys to find ones that need shifting
-        // Or simpler: iterate from pIndex + 1 to length + 1 (since we just acted on old length)
-        // Better: iterate keys
         Object.keys(newSearchTerms).forEach(key => {
             const [aIdx, pIdx] = key.split('-').map(Number);
             if (aIdx === appIndex && pIdx > pIndex) {
@@ -254,6 +434,21 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
             }
         });
         setSearchTerms(newSearchTerms);
+
+        // Shift lockedPersonnel keys the same way
+        setLockedPersonnel(prev => {
+            const next = new Set<string>();
+            prev.forEach(key => {
+                const [aIdx, pIdx] = key.split('-').map(Number);
+                if (aIdx === appIndex && pIdx === pIndex) return; // remove this one
+                if (aIdx === appIndex && pIdx > pIndex) {
+                    next.add(`${appIndex}-${pIdx - 1}`); // shift down
+                } else {
+                    next.add(key);
+                }
+            });
+            return next;
+        });
     };
 
     const handleSearchChange = (appIndex: number, pIndex: number, value: string) => {
@@ -278,6 +473,21 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
         setSearchTerms({ ...searchTerms, [`${appIndex}-${pIndex}`]: `${ff.name} (${ff.pin})` });
         setActiveSearch(null);
         setHighlightedIndex(null);
+        // Lock the field so no free-text editing is possible after selection
+        setLockedPersonnel(prev => new Set(prev).add(`${appIndex}-${pIndex}`));
+    };
+
+    const unlockPersonnel = (appIndex: number, pIndex: number) => {
+        setLockedPersonnel(prev => {
+            const next = new Set(prev);
+            next.delete(`${appIndex}-${pIndex}`);
+            return next;
+        });
+        // Also clear the selection so the field is empty and ready for a new search
+        updatePersonnel(appIndex, pIndex, 'firefighterId', '');
+        updatePersonnel(appIndex, pIndex, 'firefighterRadioId', '');
+        setSearchTerms(prev => ({ ...prev, [`${appIndex}-${pIndex}`]: '' }));
+        setFocusTarget({ appIndex, pIndex });
     };
 
     const handleKeyDown = (e: React.KeyboardEvent, appIndex: number, pIndex: number, filteredFFs: any[]) => {
@@ -370,20 +580,24 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-1">Alarm Time</label>
-                                <div className="relative flex items-center">
+                                <div className="relative">
+                                    <AlarmTimeInput
+                                        value={formData.alarmTime}
+                                        onChange={v => setFormData(prev => ({ ...prev, alarmTime: v }))}
+                                    />
+                                    {/* Hidden type="time" — only used to drive the visual clock picker */}
                                     <input
                                         ref={alarmTimeInputRef}
                                         type="time"
-                                        value={formData.alarmTime}
-                                        onChange={e => setFormData({ ...formData, alarmTime: e.target.value })}
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
-                                        required
+                                        className="sr-only"
+                                        tabIndex={-1}
+                                        onChange={e => setFormData(prev => ({ ...prev, alarmTime: hhmmToStandard(e.target.value) }))}
                                     />
                                     <button
                                         type="button"
                                         tabIndex={-1}
                                         onClick={() => { try { alarmTimeInputRef.current?.showPicker(); } catch {} }}
-                                        className="absolute right-2 text-slate-400 hover:text-slate-200 transition-colors"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
                                         title="Open time picker"
                                     >
                                         <Clock className="w-5 h-5" />
@@ -494,10 +708,12 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                         <button type="button" onClick={() => addPersonnel(appIndex)} className="text-blue-400 hover:text-blue-300 text-xs font-bold flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"><Plus className="w-3 h-3" /> Add Person</button>
                                     </div>
                                     {app.personnel.map((p: any, pIndex: number) => {
-                                        const filteredFFs = getFilteredFirefighters(searchTerms[`${appIndex}-${pIndex}`]);
+                                        const key = `${appIndex}-${pIndex}`;
+                                        const isLocked = lockedPersonnel.has(key);
+                                        const filteredFFs = isLocked ? [] : getFilteredFirefighters(searchTerms[key]);
                                         return (
                                             <div key={pIndex} className="flex gap-2 items-center relative">
-                                                <div className="relative flex-1 group">
+                                                <div className="relative flex-1">
                                                     <input
                                                         ref={(el) => {
                                                             if (el && focusTarget && focusTarget.appIndex === appIndex && focusTarget.pIndex === pIndex) {
@@ -507,14 +723,30 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                                         }}
                                                         type="text"
                                                         placeholder="Search Name or Radio ID..."
-                                                        value={searchTerms[`${appIndex}-${pIndex}`] || ''}
-                                                        onChange={e => handleSearchChange(appIndex, pIndex, e.target.value)}
-                                                        onKeyDown={e => handleKeyDown(e, appIndex, pIndex, filteredFFs)}
-                                                        onFocus={() => setActiveSearch(`${appIndex}-${pIndex}`)}
+                                                        value={searchTerms[key] || ''}
+                                                        readOnly={isLocked}
+                                                        onChange={e => !isLocked && handleSearchChange(appIndex, pIndex, e.target.value)}
+                                                        onKeyDown={e => !isLocked && handleKeyDown(e, appIndex, pIndex, filteredFFs)}
+                                                        onFocus={() => !isLocked && setActiveSearch(key)}
                                                         onBlur={() => setTimeout(() => setActiveSearch(null), 200)}
-                                                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-300 focus:border-blue-500 outline-none focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-600"
+                                                        className={`w-full border rounded-lg px-3 py-2 text-sm outline-none transition-all pr-8 ${
+                                                            isLocked
+                                                                ? 'bg-slate-800 border-green-700/50 text-green-300 cursor-default'
+                                                                : 'bg-slate-900 border-slate-600 text-slate-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-slate-600'
+                                                        }`}
                                                     />
-                                                    {activeSearch === `${appIndex}-${pIndex}` && searchTerms[`${appIndex}-${pIndex}`] && (
+                                                    {/* Clear selection button (shown when locked) */}
+                                                    {isLocked && (
+                                                        <button
+                                                            type="button"
+                                                            onMouseDown={e => { e.preventDefault(); unlockPersonnel(appIndex, pIndex); }}
+                                                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-red-400 transition-colors"
+                                                            title="Clear and re-search"
+                                                        >
+                                                            <X className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                    {!isLocked && activeSearch === key && searchTerms[key] && (
                                                         <div className="absolute z-50 left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
                                                             {filteredFFs.map((ff, idx) => (
                                                                 <div
@@ -532,7 +764,7 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                                                         </div>
                                                     )}
                                                 </div>
-                                                <button type="button" onClick={() => removePersonnel(appIndex, pIndex)} className="text-slate-500 hover:text-red-400 p-2"><X className="w-4 h-4" /></button>
+                                                <button type="button" onClick={() => removePersonnel(appIndex, pIndex)} className="text-slate-500 hover:text-red-400 p-2" title="Remove row"><X className="w-4 h-4" /></button>
                                             </div>
                                         )
                                     })}

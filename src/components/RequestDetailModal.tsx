@@ -134,7 +134,7 @@ export default function RequestDetailModal({ request, onClose, onApprove, onDeny
                         <div>
                             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Date & Time</h3>
                             <p className="text-lg text-slate-200 flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-slate-400" /> {targetReport.date ? format(new Date(targetReport.date), 'MMMM d, yyyy') : 'N/A'}
+                                <Calendar className="w-4 h-4 text-slate-400" /> {targetReport.date ? format(new Date(targetReport.date.slice(0, 10).replace(/-/g, '/')), 'MMMM d, yyyy') : 'N/A'}
                                 <Clock className="w-4 h-4 text-slate-400 ml-2" /> {targetReport.alarmTime}
                             </p>
                         </div>

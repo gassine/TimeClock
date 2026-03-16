@@ -2400,7 +2400,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         <tbody className="divide-y divide-slate-700">
                                             {fieldReportRequests.filter(r => r.status === 'PENDING').map(req => (
                                                 <tr key={req.id} className="hover:bg-slate-700/30 transition-colors">
-                                                    <td className="p-4 font-medium">{format(new Date(req.report.date), 'MMM d, yyyy')}</td>
+                                                    <td className="p-4 font-medium">{format(new Date(req.report.date.slice(0, 10).replace(/-/g, '/')), 'MMM d, yyyy')}</td>
                                                     <td className="p-4 text-white">{req.requestedByUser?.name || 'Unknown'}</td>
                                                     <td className="p-4">
                                                         <span className="px-2 py-1 rounded bg-slate-700 text-xs font-bold font-mono">
@@ -2779,7 +2779,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                 {fieldReports.map((report) => (
                                                     <tr key={report.id} className="hover:bg-slate-700/30 transition-colors">
                                                         <td className="p-4 text-slate-300">
-                                                            {format(new Date(report.date), 'MMM d, yyyy')}
+                                                            {format(new Date(report.date.slice(0, 10).replace(/-/g, '/')), 'MMM d, yyyy')}
                                                             <div className="text-xs text-slate-500">{report.alarmTime}</div>
                                                         </td>
                                                         <td className="p-4 font-medium text-white">{report.incidentType.name}</td>

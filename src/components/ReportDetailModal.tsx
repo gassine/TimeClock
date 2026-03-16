@@ -26,7 +26,7 @@ export default function ReportDetailModal({ report, onClose, onEdit, onStatusCha
                             <span className={`text-sm px-3 py-1 rounded-full border ${report.status.name === 'Draft' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>{report.status.name}</span>
                         </h2>
                         <p className="text-slate-400 mt-1 flex items-center gap-4">
-                            <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {format(new Date(report.date), 'MMMM d, yyyy')} @ {report.alarmTime}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {format(new Date(report.date.slice(0, 10).replace(/-/g, '/')), 'MMMM d, yyyy')} @ {report.alarmTime}</span>
                             <span className="flex items-center gap-1"><MapPin className="w-4 h-4" /> {report.location}</span>
                         </p>
                     </div>

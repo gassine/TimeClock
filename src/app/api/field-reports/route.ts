@@ -121,7 +121,7 @@ export async function POST(request: Request) {
         const reportWithLog = await prisma.fieldReport.create({
             data: {
                 incidentTypeId: body.incidentTypeId,
-                date: new Date(body.date),
+                date: new Date(body.date + 'T12:00:00.000Z'),
                 alarmTime: body.alarmTime,
                 location: body.location,
                 district: body.district,
