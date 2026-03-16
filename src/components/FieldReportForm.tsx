@@ -50,6 +50,16 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
     const [showLocationDropdown, setShowLocationDropdown] = useState(false);
     const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
     const isLocationInputFocused = useRef(false);
+    const [userState, setUserState] = useState<string | null>(null);
+    const dateInputRef = useRef<HTMLInputElement>(null);
+    const alarmTimeInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        fetch('/api/geoip')
+            .then(r => r.json())
+            .then(d => { if (d.state) setUserState(d.state); })
+            .catch(() => {});
+    }, []);
 
     const handleLocationSearch = (query: string) => {
         setFormData({ ...formData, location: query });
@@ -58,7 +68,11 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
             debounceTimeout.current = setTimeout(async () => {
                 setFetchingLocation(true);
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=us`);
+                    // Use structured search with state param to strictly limit results to the user's state
+                    const url = userState
+                        ? `https://nominatim.openstreetmap.org/search?format=json&street=${encodeURIComponent(query)}&state=${encodeURIComponent(userState)}&country=us&limit=5&addressdetails=1`
+                        : `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=us`;
+                    const res = await fetch(url);
                     const data = await res.json();
                     setLocationSuggestions(data);
                     if (isLocationInputFocused.current) {
@@ -334,37 +348,47 @@ export default function FieldReportForm({ initialData, onSubmit, onCancel, incid
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-1">Date</label>
-                                <input
-                                    type="date"
-                                    value={formData.date}
-                                    onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                    onClick={(e) => {
-                                        try {
-                                            (e.currentTarget as HTMLInputElement).showPicker();
-                                        } catch (err) {
-                                            // Fallback for browsers that don't support showPicker (like older iOS Safari)
-                                        }
-                                    }}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white cursor-pointer [color-scheme:dark]"
-                                    required
-                                />
+                                <div className="relative flex items-center">
+                                    <input
+                                        ref={dateInputRef}
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={e => setFormData({ ...formData, date: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        onClick={() => { try { dateInputRef.current?.showPicker(); } catch {} }}
+                                        className="absolute right-2 text-slate-400 hover:text-slate-200 transition-colors"
+                                        title="Open date picker"
+                                    >
+                                        <Calendar className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-1">Alarm Time</label>
-                                <input
-                                    type="time"
-                                    value={formData.alarmTime}
-                                    onChange={e => setFormData({ ...formData, alarmTime: e.target.value })}
-                                    onClick={(e) => {
-                                        try {
-                                            (e.currentTarget as HTMLInputElement).showPicker();
-                                        } catch (err) {
-                                            // Fallback for browsers that don't support showPicker
-                                        }
-                                    }}
-                                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-white cursor-pointer [color-scheme:dark]"
-                                    required
-                                />
+                                <div className="relative flex items-center">
+                                    <input
+                                        ref={alarmTimeInputRef}
+                                        type="time"
+                                        value={formData.alarmTime}
+                                        onChange={e => setFormData({ ...formData, alarmTime: e.target.value })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:ring-blue-500 outline-none text-white [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:hidden"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        onClick={() => { try { alarmTimeInputRef.current?.showPicker(); } catch {} }}
+                                        className="absolute right-2 text-slate-400 hover:text-slate-200 transition-colors"
+                                        title="Open time picker"
+                                    >
+                                        <Clock className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div>
