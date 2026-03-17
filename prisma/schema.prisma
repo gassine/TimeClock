@@ -47,6 +47,7 @@ model Firefighter {
   notices Notice[]
 
   trainingReadStatuses TrainingReadStatus[]
+  memberCertifications MemberCertification[]
 }
 
 model AuditLog {
@@ -484,6 +485,49 @@ model NoticeSettings {
   id                String  @id @default(cuid())
   everyoneCanPost   Boolean @default(false)
   everyoneCanDelete Boolean @default(false)
+}
+
+// ---------------------------------------------------------
+// CERTIFICATIONS MODULE MODELS
+// ---------------------------------------------------------
+
+model Certification {
+  id        String   @id @default(cuid())
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberCertifications MemberCertification[]
+}
+
+model MemberCertification {
+  id              String        @id @default(cuid())
+  firefighterId   String
+  firefighter     Firefighter   @relation(fields: [firefighterId], references: [id], onDelete: Cascade)
+  certificationId String
+  certification   Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  certDate        DateTime?
+  expiryDate      DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([firefighterId, certificationId])
+}
+
+model CertificationReminderRule {
+  id               String   @id @default(cuid())
+  daysBeforeExpiry Int
+  color            String
+  label            String?
+  order            Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model CertificationSettings {
+  id          String  @id @default(cuid())
+  showToUsers Boolean @default(true)
 }
 
 // ---------------------------------------------------------

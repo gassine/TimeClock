@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users, BookOpen, ListTodo } from 'lucide-react';
+import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users, BookOpen, ListTodo, Shield } from 'lucide-react';
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import UserTruckChecks from './UserTruckChecks';
 import UserTraining from './UserTraining';
 import AssignmentsView from './AssignmentsView';
+import CertificationsView from './CertificationsView';
 import NoticesSection from './NoticesSection';
 import { format } from 'date-fns';
 import { formatPhoneNumber } from '@/lib/utils';
@@ -98,7 +99,8 @@ export default function UserDashboard({ user }: UserDashboardProps) {
     const [editingIssue, setEditingIssue] = useState<{ id: string, title: string, description: string } | null>(null);
 
     // UI State
-    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks' | 'directory' | 'training' | 'assignments'>('timesheet');
+    const [activeTab, setActiveTab] = useState<'timesheet' | 'issues' | 'reports' | 'truck-checks' | 'directory' | 'training' | 'assignments' | 'certifications'>('timesheet');
+    const [certShowToUsers, setCertShowToUsers] = useState(false);
 
     // Directory State
     const [directoryData, setDirectoryData] = useState<any[]>([]);
@@ -231,6 +233,11 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             const statusRes = await fetch('/api/report-statuses');
             const statusData = await statusRes.json();
             if (Array.isArray(statusData)) setReportStatuses(statusData);
+
+            // Get Certification Settings
+            const certSettingsRes = await fetch('/api/certifications/settings');
+            const certSettingsData = await certSettingsRes.json();
+            if (certSettingsData?.showToUsers !== undefined) setCertShowToUsers(certSettingsData.showToUsers);
 
             setLoading(false);
         } catch (error) {
@@ -581,13 +588,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             <NoticesSection user={user} />
 
             {/* Tab Navigation */}
-            <div className="flex gap-4 border-b border-slate-700 mb-6 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
+            <div className="flex flex-wrap gap-4 border-b border-slate-700 mb-6 pb-1">
                 <button
                     onClick={() => setActiveTab('timesheet')}
                     className={`pb-4 px-2 font-bold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'timesheet' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                     <Clock className="w-5 h-5" />
-                    My Timesheet
+                    Timesheet
                 </button>
                 <button
                     onClick={() => setActiveTab('directory')}
@@ -619,7 +626,7 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                     onClick={() => setActiveTab('reports')}
                     className={`pb-4 px-2 font-bold whitespace-nowrap transition-all flex items-center gap-2 ${activeTab === 'reports' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                    <ClipboardList className="w-5 h-5" /> Field Reports
+                    <ClipboardList className="w-5 h-5" /> Reports
                     {drafts.length > 0 && (
                         <span className="bg-blue-500 text-white text-xs font-extra-bold px-2 py-0.5 rounded-full">
                             {drafts.length}
@@ -640,6 +647,15 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                     <ListTodo className="w-5 h-5 text-blue-400" />
                     Assignments
                 </button>
+                {certShowToUsers && (
+                    <button
+                        onClick={() => setActiveTab('certifications')}
+                        className={`pb-3 px-2 font-medium whitespace-nowrap transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'certifications' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-500'}`}
+                    >
+                        <Shield className="w-5 h-5 text-blue-400" />
+                        Certifications
+                    </button>
+                )}
             </div>
 
             {/* TIMESHEET TAB */}
@@ -1177,6 +1193,13 @@ export default function UserDashboard({ user }: UserDashboardProps) {
             {activeTab === 'assignments' && (
                 <div className="animate-in fade-in duration-300">
                     <AssignmentsView />
+                </div>
+            )}
+
+            {/* CERTIFICATIONS TAB */}
+            {activeTab === 'certifications' && (
+                <div className="animate-in fade-in duration-300">
+                    <CertificationsView />
                 </div>
             )}
 

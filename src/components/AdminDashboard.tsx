@@ -8,6 +8,7 @@ import RequestDetailModal from './RequestDetailModal';
 import AdminTruckChecks from './AdminTruckChecks';
 import AdminTraining from './AdminTraining';
 import AssignmentsAdmin from './AssignmentsAdmin';
+import CertificationsAdmin from './CertificationsAdmin';
 import { format } from 'date-fns';
 import LogsTable from './LogsTable';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/utils';
@@ -116,7 +117,7 @@ type AdminDashboardProps = {
 };
 
 export default function AdminDashboard({ initialFirefighters, initialRoles, initialStations, initialShifts, currentUser }: AdminDashboardProps) {
-    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'shifts' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks' | 'directory-settings' | 'training' | 'notices' | 'assignments'>('reports');
+    const [activeTab, setActiveTab] = useState<'firefighters' | 'roles' | 'stations' | 'shifts' | 'apparatus' | 'reports' | 'requests' | 'logs' | 'issues' | 'field-reports' | 'truck-checks' | 'directory-settings' | 'training' | 'notices' | 'assignments' | 'certifications'>('reports');
 
     // Data States
     const [firefighters, setFirefighters] = useState<Firefighter[]>(initialFirefighters);
@@ -1338,6 +1339,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     { id: 'truck-checks', label: 'Truck Checks', icon: Truck },
                                     { id: 'training', label: 'Knowledge', icon: BookOpen },
                                     { id: 'assignments', label: 'Assignments', icon: ListTodo },
+                                    { id: 'certifications', label: 'Certifications', icon: Shield },
                                 ].map((tab) => (
                                     <button
                                         key={tab.id}
@@ -1809,6 +1811,12 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     {activeTab === 'assignments' && (
                         <div className="animate-in fade-in duration-300">
                             <AssignmentsAdmin firefighters={firefighters} />
+                        </div>
+                    )}
+
+                    {activeTab === 'certifications' && (
+                        <div className="animate-in fade-in duration-300">
+                            <CertificationsAdmin firefighters={firefighters} />
                         </div>
                     )}
 
