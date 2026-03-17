@@ -220,7 +220,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
     const [dateRange, setDateRange] = useState<{ start: string; end: string; label: string }>({
         start: '',
         end: '',
-        label: 'Recent (Last 50)',
+        label: 'Recent',
     });
 
     // Helper to set date ranges
@@ -256,7 +256,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                 label = 'Last Year';
                 break;
             case 'recent':
-                setDateRange({ start: '', end: '', label: 'Recent (Last 50)' });
+                setDateRange({ start: '', end: '', label: 'Recent' });
                 return;
         }
         setDateRange({ start: start.toISOString(), end: end.toISOString(), label });
@@ -2203,7 +2203,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Clock className="text-green-400" /> Hours Summary ({dateRange.label})</h2>
                                 <div>
-                                    {/* All Personnel Card */}
+                                    {/* Summary Card */}
                                     {(() => {
                                         const totalMs = Object.values(summaryStats).reduce((acc, curr) => acc + curr.totalMs, 0);
                                         const totalCalls = Object.values(callCounts).reduce((acc, count) => acc + count, 0);
@@ -2213,17 +2213,28 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         const hours = Math.floor(totalHours);
                                         const minutes = Math.floor((totalHours - hours) * 60);
 
+                                        const selectedName = filterFirefighterId
+                                            ? sortedFirefighters.find(f => f.id === filterFirefighterId)?.name ?? 'All Employees'
+                                            : 'All Employees';
+
                                         return (
-                                            <div className="bg-slate-700/50 p-6 rounded-xl border-2 border-slate-600 flex justify-between items-center shadow-lg mb-6 max-w-2xl">
-                                                <div>
-                                                    <p className="font-bold text-xl text-white flex items-center gap-2"><Users className="w-6 h-6 text-blue-400" /> All Personnel Summary</p>
-                                                    <div className="flex gap-6 text-sm text-slate-300 mt-2">
-                                                        <span><span className="font-bold text-white">{totalShifts}</span> shifts</span>
-                                                        <span className="flex items-center gap-1"><Truck className="w-4 h-4 text-blue-400" /> <span className="font-bold text-white">{totalCalls}</span> calls</span>
+                                            <div className="bg-slate-700/50 p-6 rounded-xl border-2 border-slate-600 shadow-lg mb-6 w-full">
+                                                <div className="flex flex-wrap items-center justify-between gap-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Users className="w-6 h-6 text-blue-400 shrink-0" />
+                                                        <p className="font-bold text-xl text-white">{selectedName} Summary</p>
                                                     </div>
+                                                    <p className="text-3xl font-mono text-green-400 bg-slate-800 px-4 py-2 rounded-lg whitespace-nowrap shadow-inner border border-slate-700">{hours}h {minutes}m</p>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-3xl font-mono text-green-400 bg-slate-800 px-4 py-2 rounded-lg inline-block whitespace-nowrap shadow-inner border border-slate-700">{hours}h {minutes}m</p>
+                                                <div className="mt-4 grid grid-cols-2 gap-4">
+                                                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 flex flex-col gap-1">
+                                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Shifts</span>
+                                                        <span className="text-2xl font-bold text-white">{totalShifts}</span>
+                                                    </div>
+                                                    <div className="bg-slate-800/60 rounded-lg px-4 py-3 flex flex-col gap-1">
+                                                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Truck className="w-3.5 h-3.5 text-blue-400" /> Calls</span>
+                                                        <span className="text-2xl font-bold text-blue-400">{totalCalls}</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
