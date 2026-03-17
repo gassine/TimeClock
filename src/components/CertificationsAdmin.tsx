@@ -375,9 +375,9 @@ export default function CertificationsAdmin({ firefighters: initialFFs }: { fire
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0 w-full">
             {/* Header + sub-tabs */}
-            <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+            <div className="bg-slate-800 rounded-2xl border border-slate-700 w-full">
                 <div className="p-6 border-b border-slate-700 flex items-center justify-between flex-wrap gap-4">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Shield className="text-blue-400 w-6 h-6" /> Certifications
@@ -394,7 +394,7 @@ export default function CertificationsAdmin({ firefighters: initialFFs }: { fire
 
                 {/* ── CERT MATRIX ── */}
                 {section === 'matrix' && (
-                    <div className="p-6 space-y-4">
+                    <div className="p-6 space-y-4 min-w-0">
                         {/* Filters */}
                         <div className="flex flex-wrap gap-3">
                             <div className="relative flex-1 min-w-[180px]">

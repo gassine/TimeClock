@@ -24,18 +24,17 @@ export async function GET(request: Request) {
         } else if (isOpen === 'false') {
             where.status = { isEditable: false };
         } else if (isDraft === 'true') {
-            // Drafts: Show all drafts for all users
-            where.status = { isDraftLike: true };
+            // Drafts: editable statuses
+            where.status = { isEditable: true };
         } else if (isDraft === 'false') {
-            // Recent (Submitted): Show all non-drafts
-            where.status = { isDraftLike: false };
+            // Recent (Submitted): non-editable statuses
+            where.status = { isEditable: false };
         }
 
         // Apply viewer restrictions only if not fetching "open" reports globally
         if (viewerId && isOpen !== 'true') {
-            // Fallback: Mixed view or specific user view for non-open reports
             where.OR = [
-                { status: { isDraftLike: false } }, // Submitted reports are generally visible
+                { status: { isEditable: false } }, // Submitted reports are generally visible
                 { createdByUserId: viewerId } // User's own reports (including drafts)
             ];
         }

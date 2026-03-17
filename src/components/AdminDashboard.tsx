@@ -1815,7 +1815,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     )}
 
                     {activeTab === 'certifications' && (
-                        <div className="animate-in fade-in duration-300">
+                        <div className="animate-in fade-in duration-300 min-w-0">
                             <CertificationsAdmin firefighters={firefighters} />
                         </div>
                     )}
