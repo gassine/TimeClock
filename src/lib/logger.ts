@@ -3,7 +3,7 @@ import { prisma } from './prisma';
 import { headers, cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-this';
+const JWT_SECRET = process.env.JWT_SECRET || '';
 
 async function getAdminId(): Promise<string | undefined> {
     try {

@@ -8,7 +8,10 @@
       "Bash(npm install:*)",
       "Bash(taskkill //F //IM node.exe)",
       "Bash(npx tsc:*)",
-      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")"
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")",
+      "Bash(grep -r \"CORS\\\\|cors\\\\|Access-Control\" /c/Users/kenny/Desktop/TimeClock/src --include=*.ts --include=*.tsx)",
+      "Bash(curl -s http://localhost:3000/api/firefighters -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/auth/login -H \"Content-Type: application/json\" -d '{\"\"pin\"\":\"\"0000\"\"}' -w \"\\\\nHTTP %{http_code}\")"
     ]
   }
 }

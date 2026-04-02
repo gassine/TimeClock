@@ -4,7 +4,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-this';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set.');
+const JWT_SECRET_SAFE = JWT_SECRET as string;
 
 export async function POST(request: Request) {
     try {
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
                 role: firefighter.role.name,
                 pin: firefighter.pin
             },
-            JWT_SECRET,
+            JWT_SECRET_SAFE,
             { expiresIn: '8h' }
         );
 
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
         const cookieStore = await cookies();
         cookieStore.set('auth_session', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production' && process.env.HTTPS === 'true',
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax', // Use lax instead of strict to prevent cross-navigation cookie drops
             maxAge: 60 * 60 * 8, // 8 hours
             path: '/',

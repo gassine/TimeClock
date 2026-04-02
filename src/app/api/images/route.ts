@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readdir, stat, unlink } from 'fs/promises';
 import path from 'path';
+import { getAuthUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
     try {
@@ -46,6 +47,11 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
+        const user = await getAuthUser();
+        if (!user?.isAdmin) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const { searchParams } = new URL(request.url);
         const filename = searchParams.get('filename');
 

@@ -5,6 +5,17 @@ import { v4 as uuidv4 } from 'uuid';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
+const ALLOWED_MIME_TYPES = new Set([
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'video/mp4', 'video/webm', 'video/quicktime',
+    'text/plain', 'text/csv',
+]);
+
 export async function POST(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -19,6 +30,10 @@ export async function POST(request: NextRequest) {
 
         if (file.size > MAX_FILE_SIZE) {
             return NextResponse.json({ error: 'File too large (max 50 MB)' }, { status: 413 });
+        }
+
+        if (!ALLOWED_MIME_TYPES.has(file.type)) {
+            return NextResponse.json({ error: 'File type not allowed' }, { status: 415 });
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());

@@ -9,19 +9,19 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      # Point to a persistent volume for the SQLite database
+      # SQLite database stored in a persistent volume
       - DATABASE_URL=file:/app/db/prod.db
-      # Add other env vars here, e.g.
-      # - NEXTAUTH_SECRET=changeme
-      # - NEXTAUTH_URL=http://localhost:3000
+      # REQUIRED: Set this to a long random secret string. Never share it.
+      # Generate one at: https://generate-secret.vercel.app/64
+      - JWT_SECRET=${JWT_SECRET}
     volumes:
-      # Mount the 'db' directory to persist the SQLite database file
+      # Persist the SQLite database file across container restarts
       - ./db:/app/db
-      # Mount the uploads directory to persist user-uploaded files (images, attachments)
+      # Persist uploaded files (images, attachments) across container restarts
       - ./uploads:/app/public/uploads
-    # You can add a healthcheck if desired
-    # healthcheck:
-    #   test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
-    #   interval: 30s
-    #   timeout: 10s
-    #   retries: 3
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/auth/logout"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

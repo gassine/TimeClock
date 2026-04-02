@@ -142,6 +142,9 @@ model TimeEntry {
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   changeRequests TimeChangeRequest[]
+
+  @@index([firefighterId])
+  @@index([clockIn])
 }
 
 model Issue {
@@ -225,6 +228,10 @@ model FieldReport {
   modificationRequests FieldReportModRequest[]
   comments             FieldReportComment[]
   auditLogs            FieldReportAuditLog[]
+
+  @@index([createdByUserId])
+  @@index([date])
+  @@index([statusId])
 }
 
 model FieldReportApparatus {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readdir, stat, unlink } from 'fs/promises';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
+import { getAuthUser } from '@/lib/auth';
 
 const TRAINING_DIR = path.join(process.cwd(), 'public', 'uploads', 'training');
 
@@ -53,6 +54,11 @@ export async function GET() {
 
 export async function DELETE(request: NextRequest) {
     try {
+        const user = await getAuthUser();
+        if (!user?.isAdmin) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
         const { searchParams } = new URL(request.url);
         const filename = searchParams.get('filename');
 
