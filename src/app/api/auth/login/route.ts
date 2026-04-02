@@ -1,15 +1,29 @@
 import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { checkRateLimit, recordFailedAttempt, clearAttempts } from '@/lib/rateLimit';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set.');
 const JWT_SECRET_SAFE = JWT_SECRET as string;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     try {
+        // Rate limiting — get the real client IP
+        const headersList = await headers();
+        const forwarded = headersList.get('x-forwarded-for');
+        const ip = forwarded ? forwarded.split(',')[0].trim() : 'unknown';
+
+        const rateCheck = checkRateLimit(ip);
+        if (!rateCheck.allowed) {
+            return NextResponse.json(
+                { error: `Too many failed login attempts. Try again in ${Math.ceil((rateCheck.retryAfterSeconds ?? 900) / 60)} minutes.` },
+                { status: 429 }
+            );
+        }
+
         const { pin, password } = await request.json();
 
         if (!pin) {
@@ -22,6 +36,7 @@ export async function POST(request: Request) {
         });
 
         if (!firefighter) {
+            recordFailedAttempt(ip);
             return NextResponse.json({ error: 'Invalid PIN' }, { status: 401 });
         }
 
@@ -31,19 +46,19 @@ export async function POST(request: Request) {
 
         // Auth Logic
         if (firefighter.password) {
-            // User has a password, verify it
             if (!password) {
+                recordFailedAttempt(ip);
                 return NextResponse.json({ error: 'Password required' }, { status: 401 });
             }
             const isValid = await bcrypt.compare(password, firefighter.password);
             if (!isValid) {
+                recordFailedAttempt(ip);
                 return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
             }
-        } else {
-            // User has NO password configured -> specific logic:
-            // "users that don't have a password will log in automatically"
-            // This means we allow login with just PIN.
         }
+
+        // Successful login — clear any failed attempt history for this IP
+        clearAttempts(ip);
 
         // Create Session Token
         const token = jwt.sign(
@@ -58,13 +73,11 @@ export async function POST(request: Request) {
             { expiresIn: '8h' }
         );
 
-        // Set Cookie
-        // Await the cookies() call
         const cookieStore = await cookies();
         cookieStore.set('auth_session', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax', // Use lax instead of strict to prevent cross-navigation cookie drops
+            sameSite: 'lax',
             maxAge: 60 * 60 * 8, // 8 hours
             path: '/',
         });
