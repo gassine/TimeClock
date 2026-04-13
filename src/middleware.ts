@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
-// API paths that don't require a logged-in session
-const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/logout'];
+// API paths that don't require a logged-in session.
+// clock-in and clock-out are PIN-based kiosk endpoints — no session cookie needed.
+const PUBLIC_PATHS = [
+    '/api/auth/login',
+    '/api/auth/logout',
+    '/api/clock-in',
+    '/api/clock-out',
+];
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
