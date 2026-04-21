@@ -53,7 +53,8 @@ function hhmmToStandard(hhmm: string): string {
     return parseToStandardTime(hhmm);
 }
 
-// Segmented time input: HH | MM | AM/PM with keyboard navigation and military time support
+// Segmented time input: HH | MM | AM/PM with keyboard navigation and military time support.
+// On mobile (touch devices) it falls back to the native time picker.
 function AlarmTimeInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
     const parsed = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
     const h = parsed ? parseInt(parsed[1]) : 12;
@@ -65,6 +66,14 @@ function AlarmTimeInput({ value, onChange }: { value: string; onChange: (v: stri
     const [focused, setFocused] = useState(false);
     const [hBuf, setHBuf] = useState('');
     const [mBuf, setMBuf] = useState('');
+    const nativeRef = useRef<HTMLInputElement>(null);
+
+    const handleTouchStart = () => {
+        if (nativeRef.current) {
+            nativeRef.current.focus();
+            try { (nativeRef.current as any).showPicker(); } catch {}
+        }
+    };
 
     const emit = (nh: number, nm: number, np: 'AM' | 'PM') =>
         onChange(`${nh}:${nm.toString().padStart(2, '0')} ${np}`);
@@ -136,6 +145,7 @@ function AlarmTimeInput({ value, onChange }: { value: string; onChange: (v: stri
                 setFocused(false); setHBuf(''); setMBuf('');
             }}
             onKeyDown={handleKeyDown}
+            onTouchStart={handleTouchStart}
             className={`flex items-center w-full bg-slate-800 border rounded-lg px-4 py-2.5 pr-10 outline-none select-none cursor-default ${focused ? 'border-blue-500 ring-2 ring-blue-500' : 'border-slate-700'}`}
         >
             <span data-seg="0" onClick={() => setSeg(0)} className={s(0)}>
@@ -149,6 +159,14 @@ function AlarmTimeInput({ value, onChange }: { value: string; onChange: (v: stri
             <span data-seg="2" onClick={() => setSeg(2)} className={s(2)}>
                 {hasValue ? p : 'AM'}
             </span>
+            {/* Native time input — invisible, triggered on mobile touch to open the system time picker */}
+            <input
+                ref={nativeRef}
+                type="time"
+                className="sr-only"
+                tabIndex={-1}
+                onChange={e => { if (e.target.value) onChange(hhmmToStandard(e.target.value)); }}
+            />
         </div>
     );
 }
@@ -169,7 +187,7 @@ type FieldReportFormProps = {
 export default function FieldReportForm({ initialData, onSubmit, onCancel, incidentTypes, firefighters, apparatus, user, mode = 'create', onRequestSubmit, reportStatuses }: FieldReportFormProps) {
     const [formData, setFormData] = useState({
         incidentTypeId: initialData?.incidentTypeId || '',
-        date: initialData?.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        date: initialData?.date ? new Date(initialData.date).toISOString().split('T')[0] : format(new Date(), 'yyyy-MM-dd'),
         alarmTime: initialData?.alarmTime ? parseToStandardTime(initialData.alarmTime) : '',
         location: initialData?.location || '',
         district: initialData?.district || '',
