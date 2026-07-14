@@ -4,10 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies, headers } from 'next/headers';
 import { checkRateLimit, recordFailedAttempt, clearAttempts } from '@/lib/rateLimit';
-
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set.');
-const JWT_SECRET_SAFE = JWT_SECRET as string;
+import { getJwtSecret } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
@@ -69,7 +66,7 @@ export async function POST(request: NextRequest) {
                 role: firefighter.role.name,
                 pin: firefighter.pin
             },
-            JWT_SECRET_SAFE,
+            getJwtSecret(),
             { expiresIn: '8h' }
         );
 

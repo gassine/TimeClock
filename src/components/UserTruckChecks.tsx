@@ -23,6 +23,8 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
     const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
     const eventSourceRef = useRef<EventSource | null>(null);
+    const activeReportIdRef = useRef<string | null>(null);
+    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -35,6 +37,7 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
             if (eventSourceRef.current) {
                 eventSourceRef.current.close();
             }
+            if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
         };
     }, []);
 
@@ -97,6 +100,7 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
             const res = await fetch(`/api/truck-checks/reports/${reportProxy.id}`);
             if (res.ok) {
                 const fullReport = await res.json();
+                activeReportIdRef.current = fullReport.id;
                 setActiveReport(fullReport);
 
                 // If the report is open, establish SSE connection for realtime sync
@@ -142,8 +146,8 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
             setSyncStatus('disconnected');
             es.close();
             // Automatically try to reconnect after 3 seconds if we are still viewing
-            setTimeout(() => {
-                if (activeReport?.id === reportId) {
+            reconnectTimerRef.current = setTimeout(() => {
+                if (activeReportIdRef.current === reportId) {
                     connectSSE(reportId);
                 }
             }, 3000);
@@ -158,6 +162,8 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
             eventSourceRef.current = null;
         }
         setSyncStatus('disconnected');
+        activeReportIdRef.current = null;
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
         setActiveReport(null);
         fetchData(); // Refresh the list
     };
@@ -181,15 +187,20 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
         // Fire to the server. The server will then broadcast it via SSE, which we will also receive
         // and overwrite our state with the finalized canonical DB row (which guarantees consistency).
         try {
-            await fetch(`/api/truck-checks/reports/${activeReport.id}/items/${itemId}`, {
+            const res = await fetch(`/api/truck-checks/reports/${activeReport.id}/items/${itemId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...updates,
-                    completedByUserId: user.id,
-                    completedByRadioId: 'USER_PIN' // You'd ideally pull radio ID from user profile
+                    completedByUserId: user.id
                 })
             });
+            if (!res.ok) throw new Error('The change could not be saved.');
+            const savedItem = await res.json();
+            setActiveReport((prev: any) => prev ? ({
+                ...prev,
+                items: prev.items.map((item: any) => item.id === savedItem.id ? { ...item, ...savedItem } : item),
+            }) : prev);
         } catch (error) {
             console.error('Failed to sync item update', error);
         }
@@ -453,7 +464,7 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
                                                                             {item.completedAt && (
                                                                                 <div className="flex items-center gap-1.5">
                                                                                     <Clock className="w-3 h-3" />
-                                                                                    {format(new Date(item.completedAt), 'hh:mm:ss a')}
+                                                                                    {format(new Date(item.completedAt), 'MMM d, yyyy h:mm:ss a')}
                                                                                 </div>
                                                                             )}
                                                                         </>

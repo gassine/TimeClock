@@ -1,21 +1,7 @@
 
 import { prisma } from './prisma';
-import { headers, cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || '';
-
-async function getAdminId(): Promise<string | undefined> {
-    try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('auth_session')?.value;
-        if (!token) return undefined;
-        const decoded = jwt.verify(token, JWT_SECRET) as any;
-        return decoded.id;
-    } catch {
-        return undefined;
-    }
-}
+import { headers } from 'next/headers';
+import { getAuthUser } from './auth';
 
 export async function logAdminAction(
     action: string,
@@ -25,7 +11,8 @@ export async function logAdminAction(
     adminId?: string
 ) {
     try {
-        const effectiveAdminId = adminId || await getAdminId();
+        const currentUser = adminId ? null : await getAuthUser();
+        const effectiveAdminId = adminId || currentUser?.id;
 
         const headersList = await headers();
         const forwardedFor = headersList.get('x-forwarded-for');

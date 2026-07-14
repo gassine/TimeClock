@@ -13,6 +13,15 @@ type ReportDetailModalProps = {
     readOnly?: boolean; // If true, hide edit/status actions
 };
 
+const historyActionLabels: Record<string, string> = {
+    CREATED: 'Report created',
+    UPDATED: 'Report details changed',
+    STATUS_CHANGED: 'Report status changed',
+    MODIFICATION_REQUESTED: 'A change was requested',
+    MODIFICATION_APPROVED: 'The requested change was approved',
+    MODIFICATION_DENIED: 'The requested change was denied',
+};
+
 export default function ReportDetailModal({ report, onClose, onEdit, onStatusChange, reportStatuses, readOnly = false }: ReportDetailModalProps) {
     const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
 
@@ -87,19 +96,23 @@ export default function ReportDetailModal({ report, onClose, onEdit, onStatusCha
                                 <p className="text-slate-500 italic text-center py-8">No history recorded.</p>
                             ) : (
                                 <div className="relative pl-4 space-y-8 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
-                                    {report.auditLogs.map((log: any) => (
-                                        <div key={log.id} className="relative z-10">
-                                            <div className="absolute -left-[1.35rem] top-1.5 w-3 h-3 rounded-full bg-slate-900 border-2 border-slate-600 ring-4 ring-slate-900" />
-                                            <div>
-                                                <p className="text-sm text-slate-400 font-mono mb-1">{format(new Date(log.createdAt), 'MMM d, yyyy @ HH:mm')}</p>
-                                                <h4 className="font-bold text-white text-lg">{log.action.replace(/_/g, ' ')}</h4>
-                                                {log.details && <p className="text-slate-300 bg-slate-800/50 p-3 rounded-lg border border-slate-700 mt-2">{log.details}</p>}
-                                                <p className="text-xs text-slate-500 mt-2 flex items-center gap-2">
-                                                    Action by: <span className="font-mono bg-slate-800 px-1 rounded">{log.actorId}</span>
-                                                </p>
+                                    {report.auditLogs.map((log: any) => {
+                                        const actorLabel = log.actorName || log.actor?.name || log.actorId || 'Unknown user';
+
+                                        return (
+                                            <div key={log.id} className="relative z-10">
+                                                <div className="absolute -left-[1.35rem] top-1.5 w-3 h-3 rounded-full bg-slate-900 border-2 border-slate-600 ring-4 ring-slate-900" />
+                                                <div>
+                                                    <p className="text-sm text-slate-400 font-mono mb-1">{format(new Date(log.createdAt), 'MMM d, yyyy @ HH:mm')}</p>
+                                                    <h4 className="font-bold text-white text-lg">{historyActionLabels[log.action] || log.action.toLowerCase().replace(/_/g, ' ').replace(/^./, (c: string) => c.toUpperCase())}</h4>
+                                                    {log.details && <p className="text-slate-300 bg-slate-800/50 p-3 rounded-lg border border-slate-700 mt-2">{log.details}</p>}
+                                                    <p className="text-xs text-slate-500 mt-2 flex flex-wrap items-center gap-2">
+                                                        Done by: <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">{actorLabel}</span>
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

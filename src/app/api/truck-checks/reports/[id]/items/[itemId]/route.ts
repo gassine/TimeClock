@@ -1,11 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { broadcastToReport } from '../../stream/route';
+import { broadcastToReport } from '@/lib/truckCheckStreams';
 
 export async function PUT(request: Request, context: { params: Promise<{ id: string, itemId: string }> }) {
     try {
         const { id: reportId, itemId } = await context.params;
-        const { status, comments, completedByUserId, completedByRadioId } = await request.json();
+        const { status, comments, completedByUserId } = await request.json();
 
         // 1. Validate report exists and is Open
         const report = await prisma.truckCheckReport.findUnique({
@@ -21,6 +21,11 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
         }
 
         // 2. Perform the update
+        const completedByUser = completedByUserId ? await prisma.firefighter.findUnique({
+            where: { id: completedByUserId },
+            select: { pin: true },
+        }) : null;
+
         const updatedItem = await prisma.truckCheckReportItem.update({
             where: {
                 id: itemId,
@@ -30,11 +35,11 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
                 status,
                 comments,
                 completedByUserId,
-                completedByRadioId,
+                completedByRadioId: completedByUser?.pin ?? null,
                 completedAt: new Date()
             },
             include: {
-                completedByUser: true
+                completedByUser: { select: { id: true, name: true } }
             }
         });
 

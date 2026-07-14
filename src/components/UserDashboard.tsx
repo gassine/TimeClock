@@ -18,6 +18,8 @@ type UserDashboardProps = {
         name: string;
         isAdmin: boolean;
         role: string;
+        pin: string;
+        roleId?: string;
     };
 };
 

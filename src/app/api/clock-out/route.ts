@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+const LONG_SHIFT_MS = 12 * 60 * 60 * 1000;
+
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -31,16 +33,23 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No active shift found' }, { status: 404 });
         }
 
-        const updatedEntry = await prisma.timeEntry.update({
-            where: {
-                id: activeShift.id,
-            },
-            data: {
-                clockOut: new Date(),
-            },
-            include: {
-                firefighter: true,
-            },
+        const clockOut = new Date();
+        const updatedEntry = await prisma.$transaction(async (tx) => {
+            const entry = await tx.timeEntry.update({
+                where: { id: activeShift.id },
+                data: { clockOut },
+                include: { firefighter: true },
+            });
+
+            if (clockOut.getTime() - activeShift.clockIn.getTime() > LONG_SHIFT_MS) {
+                await tx.timeProblem.upsert({
+                    where: { timeEntryId: activeShift.id },
+                    create: { timeEntryId: activeShift.id },
+                    update: { status: 'PENDING', reviewedAt: null, reviewedById: null },
+                });
+            }
+
+            return entry;
         });
 
         return NextResponse.json(updatedEntry, { status: 200 });

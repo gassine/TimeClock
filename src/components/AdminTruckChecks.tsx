@@ -738,12 +738,13 @@ export default function AdminTruckChecks({ currentUser }: { currentUser: UserCon
                                                 <div key={item.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex gap-4">
                                                     <div className="flex-1">
                                                         <h5 className="font-bold text-white text-base">{item.templateItem?.itemName}</h5>
-                                                        {item.status ? (
+                                                        {item.completedAt ? (
                                                             <div className="mt-2 flex items-center gap-2">
                                                                 <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${item.status === 'YES' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : item.status === 'NO' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-slate-500/20 text-slate-300 border border-slate-500/30'}`}>
                                                                     {item.status}
                                                                 </span>
-                                                                <span className="text-xs text-slate-400">by {item.completedByUser?.name || 'Unknown'}</span>
+                                                                <span className="text-xs text-slate-400">by {item.completedByUser?.name || item.completedByRadioId || 'Unknown'}</span>
+                                                                <span className="text-xs text-slate-500">{format(new Date(item.completedAt), 'MMM d, yyyy h:mm a')}</span>
                                                             </div>
                                                         ) : (
                                                             <span className="mt-2 inline-block px-2 py-1 rounded text-xs font-bold uppercase bg-slate-800 text-slate-500 border border-slate-700 border-dashed">NOT CHECKED</span>

@@ -18,7 +18,8 @@ export async function GET(
                             include: {
                                 location: true
                             }
-                        }
+                        },
+                        completedByUser: { select: { id: true, name: true } }
                     },
                     orderBy: {
                         templateItem: { order: 'asc' }

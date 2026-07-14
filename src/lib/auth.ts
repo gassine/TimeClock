@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
-function getJwtSecret(): string {
+export function getJwtSecret(): string {
     const secret = process.env.JWT_SECRET;
     if (!secret) {
         throw new Error('JWT_SECRET environment variable is not set. Set it before starting the server.');
@@ -15,6 +15,7 @@ export interface AuthUser {
     isAdmin: boolean;
     role: string;
     pin: string;
+    roleId?: string;
 }
 
 export async function getAuthUser(): Promise<AuthUser | null> {

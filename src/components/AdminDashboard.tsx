@@ -9,6 +9,7 @@ import AdminTruckChecks from './AdminTruckChecks';
 import AdminTraining from './AdminTraining';
 import AssignmentsAdmin from './AssignmentsAdmin';
 import CertificationsAdmin from './CertificationsAdmin';
+import TimeProblemsPanel from './TimeProblemsPanel';
 import { format } from 'date-fns';
 import LogsTable from './LogsTable';
 import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/utils';
@@ -800,6 +801,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
     // TIME ENTRY EDITING STATES
     const [editingTimeEntry, setEditingTimeEntry] = useState<TimeEntry | null>(null);
+    const [deletingTimeEntry, setDeletingTimeEntry] = useState<TimeEntry | null>(null);
 
     // Handlers
     const handleUpdateTimeEntry = async () => {
@@ -822,6 +824,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
             setTimeEntries(timeEntries.map(entry => entry.id === data.id ? data : entry));
             setEditingTimeEntry(null);
             setMessage('Time entry updated successfully.');
+            window.dispatchEvent(new Event('time-problems-updated'));
         } catch (err: any) {
             setMessage(err.message);
         } finally {
@@ -829,18 +832,18 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         }
     };
 
-    const handleDeleteTimeEntry = async (id: string) => {
-        if (!window.confirm("WARNING: Are you sure you want to completely delete this time entry? This action is permanent and will remove both the clock in and clock out records.")) {
-            return;
-        }
+    const handleDeleteTimeEntry = async () => {
+        if (!deletingTimeEntry) return;
         setLoading(true);
         try {
-            const res = await fetch(`/api/time-entries/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/time-entries/${deletingTimeEntry.id}`, { method: 'DELETE' });
             if (!res.ok) throw new Error('Failed to delete time entry');
 
-            setTimeEntries(timeEntries.filter(t => t.id !== id));
+            setTimeEntries(timeEntries.filter(t => t.id !== deletingTimeEntry.id));
+            setDeletingTimeEntry(null);
             setEditingTimeEntry(null);
             setMessage('Time entry deleted successfully.');
+            window.dispatchEvent(new Event('time-problems-updated'));
         } catch (err: any) {
             setMessage(err.message);
         } finally {
@@ -2199,6 +2202,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                 </div>
                             </div>
 
+                            <TimeProblemsPanel onEdit={setEditingTimeEntry} onMessage={setMessage} />
+
                             {/* Hours Summary */}
                             <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Clock className="text-green-400" /> Hours Summary ({dateRange.label})</h2>
@@ -2339,7 +2344,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                                 Edit
                                                             </button>
                                                             <button
-                                                                onClick={() => handleDeleteTimeEntry(entry.id)}
+                                                                onClick={() => setDeletingTimeEntry(entry)}
                                                                 className="text-red-400 hover:text-red-300 text-sm font-medium"
                                                             >
                                                                 Delete
@@ -2498,11 +2503,11 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                     <thead className="bg-slate-900/50 text-slate-400 text-sm">
                                         <tr>
                                             <th className="p-4 rounded-tl-lg">Time</th>
-                                            <th className="p-4">Admin</th>
+                                            <th className="p-4">Performed By</th>
                                             <th className="p-4">Action</th>
-                                            <th className="p-4">Model</th>
-                                            <th className="p-4">Details</th>
-                                            <th className="p-4 rounded-tr-lg">IP</th>
+                                            <th className="p-4">Area</th>
+                                            <th className="p-4">What Changed</th>
+                                            <th className="p-4 rounded-tr-lg">Network Address</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-700">
@@ -2909,6 +2914,30 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                         <AlertTriangle className="w-5 h-5 text-blue-400 shrink-0" />
                                         <p>Note: Users can always delete their own notices if they were the author.</p>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DELETE TIME ENTRY CONFIRMATION */}
+                    {deletingTimeEntry && (
+                        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60] backdrop-blur-sm">
+                            <div className="bg-slate-800 rounded-2xl p-6 w-full max-w-md border border-red-500/40 shadow-2xl">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 bg-red-500/15 rounded-lg"><AlertTriangle className="w-6 h-6 text-red-400" /></div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">Delete this time record?</h3>
+                                        <p className="text-slate-300 mt-2">This permanently deletes both the clock-in and clock-out for <strong>{deletingTimeEntry.firefighter.name}</strong>.</p>
+                                        <div className="mt-4 p-3 bg-slate-900 rounded-lg text-sm text-slate-300 space-y-1">
+                                            <p>Clock in: {format(new Date(deletingTimeEntry.clockIn), 'MMM d, yyyy h:mm a')}</p>
+                                            <p>Clock out: {deletingTimeEntry.clockOut ? format(new Date(deletingTimeEntry.clockOut), 'MMM d, yyyy h:mm a') : 'Active shift'}</p>
+                                        </div>
+                                        <p className="text-red-300 text-sm mt-3 font-medium">This cannot be undone.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 mt-6">
+                                    <button onClick={handleDeleteTimeEntry} disabled={loading} className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg">Delete Permanently</button>
+                                    <button onClick={() => setDeletingTimeEntry(null)} disabled={loading} className="px-5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg">Cancel</button>
                                 </div>
                             </div>
                         </div>

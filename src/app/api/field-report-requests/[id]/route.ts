@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
 
     try {
+        const user = await getAuthUser();
         const body = await request.json();
         const { status, adminNotes } = body;
 
@@ -72,7 +74,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
                     data: {
                         reportId: modRequest.reportId,
                         action: 'MODIFICATION_APPROVED',
-                        actorId: 'ADMIN', // Should get from session if possible
+                        actorId: user?.id || 'ADMIN',
                         details: `Request ${modRequest.id} approved. Reason: ${modRequest.reason}`
                     }
                 })
@@ -101,7 +103,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
                     data: {
                         reportId: modRequest.reportId,
                         action: 'REOPEN_APPROVED',
-                        actorId: 'ADMIN',
+                        actorId: user?.id || 'ADMIN',
                         details: `Reopen request ${modRequest.id} approved. Reverted to draft.`
                     }
                 })

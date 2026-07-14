@@ -10,7 +10,7 @@ export async function GET(request: Request) {
             where: status ? { status } : undefined,
             include: {
                 apparatus: true,
-                items: true,
+                items: { include: { completedByUser: { select: { id: true, name: true } } } },
                 template: true
             },
             orderBy: { createdAt: 'desc' },
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const { apparatusId } = await request.json();
+        const { apparatusId, reportDate } = await request.json();
 
         // 1. Find the active template for this apparatus
         const template = await prisma.truckCheckTemplate.findFirst({
@@ -52,6 +52,7 @@ export async function POST(request: Request) {
             data: {
                 templateId: template.id,
                 apparatusId,
+                reportDate: reportDate ? new Date(reportDate) : new Date(),
                 status: 'Open',
                 items: {
                     create: template.items.map(item => ({

@@ -1,6 +1,42 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+type AuditLogWithActorName = {
+    actorId: string;
+    actorName?: string | null;
+};
+
+async function withAuditActorNames<T extends { auditLogs?: AuditLogWithActorName[] }>(report: T) {
+    const auditLogs = report.auditLogs || [];
+    const actorIds = Array.from(new Set(
+        auditLogs
+            .map(log => log.actorId)
+            .filter((actorId): actorId is string => Boolean(actorId) && !['ADMIN', 'SYSTEM', 'UNKNOWN'].includes(actorId))
+    ));
+
+    const actors = actorIds.length > 0
+        ? await prisma.firefighter.findMany({
+            where: { id: { in: actorIds as string[] } },
+            select: { id: true, name: true }
+        })
+        : [];
+
+    const actorNames = new Map(actors.map(actor => [actor.id, actor.name]));
+
+    return {
+        ...report,
+        auditLogs: auditLogs.map(log => ({
+            ...log,
+            actorName: actorNames.get(log.actorId) || (
+                log.actorId === 'ADMIN' ? 'Administrator' :
+                    log.actorId === 'SYSTEM' ? 'System' :
+                        log.actorId === 'UNKNOWN' ? 'Unknown user' :
+                            null
+            )
+        }))
+    };
+}
+
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     try {
@@ -34,7 +70,7 @@ export async function GET(request: Request, props: { params: Promise<{ id: strin
         });
 
         if (!report) return NextResponse.json({ error: 'Report not found' }, { status: 404 });
-        return NextResponse.json(report);
+        return NextResponse.json(await withAuditActorNames(report));
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch report' }, { status: 500 });
     }
@@ -115,7 +151,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
             }
         });
 
-        return NextResponse.json(updatedReport);
+        return NextResponse.json(updatedReport ? await withAuditActorNames(updatedReport) : null);
     } catch (error) {
         console.error('Error updating report:', error);
         return NextResponse.json({ error: 'Failed to update report' }, { status: 500 });

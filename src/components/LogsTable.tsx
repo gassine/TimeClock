@@ -14,6 +14,31 @@ type AuditLog = {
     admin: { name: string } | null;
 };
 
+const areaLabels: Record<string, string> = {
+    TimeEntry: 'Time record',
+    TimeChangeRequest: 'Time change request',
+    Firefighter: 'Roster member',
+    Apparatus: 'Apparatus',
+    DirectorySettings: 'Directory settings',
+    Issue: 'Issue',
+    IssueStatus: 'Issue status',
+    Role: 'Role',
+    Shift: 'Shift',
+    Station: 'Station',
+    TrainingCategory: 'Knowledge category',
+    TrainingPost: 'Knowledge post',
+    TrainingReply: 'Knowledge reply',
+};
+
+const actionLabels: Record<string, string> = {
+    CREATE: 'Created',
+    UPDATE: 'Changed',
+    DELETE: 'Deleted',
+    APPROVE: 'Approved',
+    APPROVED: 'Approved',
+    REJECTED: 'Rejected',
+};
+
 export default function LogsTable() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -62,19 +87,19 @@ export default function LogsTable() {
                         {log.admin?.name || 'System'}
                     </td>
                     <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-xs font-bold ${log.action === 'CREATE' ? 'bg-green-500/20 text-green-400' :
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${log.action === 'CREATE' || log.action === 'APPROVE' || log.action === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
                             log.action === 'UPDATE' ? 'bg-blue-500/20 text-blue-400' :
-                                log.action === 'DELETE' ? 'bg-red-500/20 text-red-400' :
+                                log.action === 'DELETE' || log.action === 'REJECTED' ? 'bg-red-500/20 text-red-400' :
                                     'bg-slate-700 text-slate-300'
                             }`}>
-                            {log.action}
+                            {actionLabels[log.action] || log.action.toLowerCase().replace(/^./, c => c.toUpperCase())}
                         </span>
                     </td>
-                    <td className="p-4 text-slate-400 font-mono text-xs uppercase tracking-wide">
-                        {log.model}
+                    <td className="p-4 text-slate-300 text-sm">
+                        {areaLabels[log.model] || log.model.replace(/([a-z])([A-Z])/g, '$1 $2')}
                     </td>
-                    <td className="p-4 text-slate-300 text-sm max-w-md truncate" title={log.details || ''}>
-                        {log.details}
+                    <td className="p-4 text-slate-300 text-sm max-w-xl whitespace-normal" title={log.details || ''}>
+                        {log.details || `${actionLabels[log.action] || log.action} ${areaLabels[log.model] || log.model}`}
                     </td>
                     <td className="p-4 text-slate-500 font-mono text-xs text-right">
                         {log.ipAddress || '-'}
