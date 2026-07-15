@@ -44,8 +44,7 @@ export async function POST(request: NextRequest) {
         // Auth Logic
         if (firefighter.password) {
             if (!password) {
-                recordFailedAttempt(ip);
-                return NextResponse.json({ error: 'Password required' }, { status: 401 });
+                return NextResponse.json({ error: 'Password required', name: firefighter.name }, { status: 401 });
             }
             const isValid = await bcrypt.compare(password, firefighter.password);
             if (!isValid) {

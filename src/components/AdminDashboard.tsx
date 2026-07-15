@@ -1304,6 +1304,8 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
         message.toLowerCase().includes('updated') ||
         message.toLowerCase().includes('deleted') ||
         message.toLowerCase().includes('saved') ||
+        message.toLowerCase().includes('approved') ||
+        message.toLowerCase().includes('completed') ||
         message.toLowerCase().includes('archived') ||
         message.toLowerCase().includes('restored')
     );

@@ -265,7 +265,7 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
                         <select
                             value={selectedApparatusId}
                             onChange={(e) => setSelectedApparatusId(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="block w-full min-w-0 max-w-full box-border bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
                         >
                             <option value="">Choose...</option>
                             {apparatusList.map(a => (
@@ -285,7 +285,7 @@ export default function UserTruckChecks({ user }: { user: UserContext }) {
                                     // Fallback for browsers that don't support showPicker
                                 }
                             }}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-6 focus:ring-2 focus:ring-blue-500 outline-none text-slate-300 cursor-pointer [color-scheme:dark]"
+                            className="block w-full min-w-0 max-w-full box-border bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-6 focus:ring-2 focus:ring-blue-500 outline-none text-slate-300 cursor-pointer [color-scheme:dark]"
                             required
                         />
 

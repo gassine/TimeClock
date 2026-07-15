@@ -68,20 +68,22 @@ export default function Kiosk() {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginPin, setLoginPin] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
-    const [loginStep, setLoginStep] = useState<'pin' | 'password' | 'admin-select'>('pin');
+    const [loginStep, setLoginStep] = useState<'pin' | 'checking' | 'password' | 'admin-select'>('pin');
     const [loginError, setLoginError] = useState('');
     const [loginName, setLoginName] = useState('');
 
-    const handleLoginSubmit = async () => {
+    const handleLoginSubmit = async (pinOverride?: string) => {
         setLoginError('');
+        const effectivePin = pinOverride ?? loginPin;
+        const effectivePassword = pinOverride ? '' : loginPassword;
 
         try {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    pin: loginPin,
-                    password: loginPassword
+                    pin: effectivePin,
+                    password: effectivePassword
                 }),
             });
 
@@ -89,6 +91,7 @@ export default function Kiosk() {
 
             if (!res.ok) {
                 if (res.status === 401 && data.error === 'Password required') {
+                    setLoginName(data.name || '');
                     setLoginStep('password');
                     return;
                 }
@@ -106,6 +109,22 @@ export default function Kiosk() {
 
         } catch (err: any) {
             setLoginError(err.message);
+            if (pinOverride) setLoginStep('pin');
+        }
+    };
+
+    const handleOpenLogin = () => {
+        setShowLoginModal(true);
+        setLoginError('');
+        setLoginPassword('');
+
+        if (pin) {
+            setLoginPin(pin);
+            setLoginStep('checking');
+            void handleLoginSubmit(pin);
+        } else {
+            setLoginPin('');
+            setLoginStep('pin');
         }
     };
 
@@ -207,7 +226,7 @@ export default function Kiosk() {
                 {/* Log In Button */}
                 <div className="mt-8 text-center">
                     <button
-                        onClick={() => setShowLoginModal(true)}
+                        onClick={handleOpenLogin}
                         className="text-slate-500 hover:text-blue-400 text-sm font-semibold flex items-center justify-center gap-2 mx-auto transition-colors"
                     >
                         <LockKeyhole className="w-4 h-4" />
@@ -235,7 +254,12 @@ export default function Kiosk() {
 
                         <h2 className="text-2xl font-bold mb-6 text-center">Log In</h2>
 
-                        {loginStep === 'pin' ? (
+                        {loginStep === 'checking' ? (
+                            <div className="py-8 text-center">
+                                <div className="w-8 h-8 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin mx-auto mb-4" />
+                                <p className="text-slate-300">Checking Radio ID...</p>
+                            </div>
+                        ) : loginStep === 'pin' ? (
                             <form onSubmit={(e) => {
                                 e.preventDefault();
                                 handleLoginSubmit();
