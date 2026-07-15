@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Settings, ShieldAlert, Pin, PinOff, Trash2, GripVertical, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -122,11 +122,7 @@ export default function NoticesSection({ user }: NoticesSectionProps) {
         })
     );
 
-    useEffect(() => {
-        fetchNoticesAndSettings();
-    }, []);
-
-    const fetchNoticesAndSettings = async () => {
+    const fetchNoticesAndSettings = useCallback(async () => {
         try {
             const [noticesRes, settingsRes] = await Promise.all([
                 fetch('/api/notices'),
@@ -146,7 +142,45 @@ export default function NoticesSection({ user }: NoticesSectionProps) {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        let eventSource: EventSource | null = null;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+        let isActive = true;
+
+        const connect = () => {
+            if (!isActive) return;
+
+            eventSource = new EventSource('/api/notices/stream');
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type !== 'connected') {
+                        void fetchNoticesAndSettings();
+                    }
+                } catch (error) {
+                    console.error('Failed to process live notice update:', error);
+                }
+            };
+            eventSource.onerror = () => {
+                eventSource?.close();
+                eventSource = null;
+                if (isActive) {
+                    reconnectTimer = setTimeout(connect, 3000);
+                }
+            };
+        };
+
+        void fetchNoticesAndSettings();
+        connect();
+
+        return () => {
+            isActive = false;
+            eventSource?.close();
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+        };
+    }, [fetchNoticesAndSettings]);
 
     const handlePostNotice = async (e: React.FormEvent) => {
         e.preventDefault();

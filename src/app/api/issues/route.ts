@@ -1,21 +1,37 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth';
 
 export async function GET(request: Request) {
     try {
+        const user = await getAuthUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
         const archived = searchParams.get('archived') === 'true';
 
         const issues = await prisma.issue.findMany({
             where: {
-                isArchived: archived
+                isArchived: archived,
+                ...(user.isAdmin ? {} : {
+                    OR: [
+                        { isVisibleToEveryone: true },
+                        { reportedById: user.id }
+                    ]
+                })
             },
             include: {
-                reportedBy: true,
+                reportedBy: {
+                    select: { id: true, name: true }
+                },
                 status: true,
                 comments: {
                     include: {
-                        author: true
+                        author: {
+                            select: { id: true, name: true }
+                        }
                     },
                     orderBy: {
                         createdAt: 'asc'
@@ -35,11 +51,16 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
-        const { title, description, reportedById } = body;
+        const user = await getAuthUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-        if (!title || !description || !reportedById) {
-            return NextResponse.json({ error: 'Title, Description, and Reporter are required' }, { status: 400 });
+        const body = await request.json();
+        const { title, description } = body;
+
+        if (!title?.trim() || !description?.trim()) {
+            return NextResponse.json({ error: 'Title and description are required' }, { status: 400 });
         }
 
         // Find default status
@@ -60,14 +81,17 @@ export async function POST(request: Request) {
 
         const newIssue = await prisma.issue.create({
             data: {
-                title,
-                description,
-                reportedById,
-                statusId
+                title: title.trim(),
+                description: description.trim(),
+                reportedById: user.id,
+                statusId,
+                isVisibleToEveryone: false
             },
             include: {
                 status: true,
-                reportedBy: true
+                reportedBy: {
+                    select: { id: true, name: true }
+                }
             }
         });
 

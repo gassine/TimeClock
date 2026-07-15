@@ -1,20 +1,39 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { logAdminAction } from '@/lib/logger';
+import { getAuthUser } from '@/lib/auth';
 
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     try {
-        const body = await request.json();
-        const { statusId, isArchived, title, description, reportedById } = body;
-        const adminId = request.headers.get('x-user-id');
+        const user = await getAuthUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-        // Check if editing as reporter
-        if (reportedById) {
-            const currentIssue = await prisma.issue.findUnique({ where: { id: params.id } });
-            if (!currentIssue || currentIssue.reportedById !== reportedById) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-            }
+        const body = await request.json();
+        const { statusId, isArchived, isVisibleToEveryone, title, description } = body;
+
+        const currentIssue = await prisma.issue.findUnique({ where: { id: params.id } });
+        if (!currentIssue) {
+            return NextResponse.json({ error: 'Issue not found' }, { status: 404 });
+        }
+
+        const hasAdminUpdate = statusId !== undefined || isArchived !== undefined || isVisibleToEveryone !== undefined;
+        if (hasAdminUpdate && !user.isAdmin) {
+            return NextResponse.json({ error: 'Only an administrator can change issue status, visibility, or archive state' }, { status: 403 });
+        }
+
+        const hasContentUpdate = title !== undefined || description !== undefined;
+        if (hasContentUpdate && !user.isAdmin && currentIssue.reportedById !== user.id) {
+            return NextResponse.json({ error: 'Only the reporter or an administrator can edit this issue' }, { status: 403 });
+        }
+
+        if (title !== undefined && !title.trim()) {
+            return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+        }
+        if (description !== undefined && !description.trim()) {
+            return NextResponse.json({ error: 'Description is required' }, { status: 400 });
         }
 
         const issue = await prisma.issue.update({
@@ -22,21 +41,22 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
             data: {
                 ...(statusId && { statusId }),
                 ...(typeof isArchived === 'boolean' && { isArchived }),
-                ...(title && { title }),
-                ...(description && { description })
+                ...(typeof isVisibleToEveryone === 'boolean' && { isVisibleToEveryone }),
+                ...(title !== undefined && { title: title.trim() }),
+                ...(description !== undefined && { description: description.trim() })
             },
             include: {
                 status: true
             }
         });
 
-        if (adminId) {
+        if (user.isAdmin) {
             await logAdminAction(
                 'UPDATE',
                 'Issue',
                 issue.id,
-                `Updated issue status to ${issue.status.name} (Archived: ${issue.isArchived})`,
-                adminId
+                `Updated "${issue.title}": status is ${issue.status.name}, visible to everyone is ${issue.isVisibleToEveryone ? 'yes' : 'no'}, and archived is ${issue.isArchived ? 'yes' : 'no'}.`,
+                user.id
             );
         }
 
@@ -50,16 +70,17 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     try {
-        const { searchParams } = new URL(request.url);
-        const adminId = request.headers.get('x-user-id');
-        const reportedById = searchParams.get('reportedById');
+        const user = await getAuthUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-        // Check if deleting as reporter
-        if (reportedById) {
-            const currentIssue = await prisma.issue.findUnique({ where: { id: params.id } });
-            if (!currentIssue || currentIssue.reportedById !== reportedById) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-            }
+        const currentIssue = await prisma.issue.findUnique({ where: { id: params.id } });
+        if (!currentIssue) {
+            return NextResponse.json({ error: 'Issue not found' }, { status: 404 });
+        }
+        if (!user.isAdmin && currentIssue.reportedById !== user.id) {
+            return NextResponse.json({ error: 'Only the reporter or an administrator can delete this issue' }, { status: 403 });
         }
 
         const issue = await prisma.issue.delete({
@@ -67,13 +88,13 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
             include: { status: true }
         });
 
-        if (adminId) {
+        if (user.isAdmin) {
             await logAdminAction(
                 'DELETE',
                 'Issue',
                 issue.id,
                 `Deleted issue: ${issue.title}`,
-                adminId
+                user.id
             );
         }
 

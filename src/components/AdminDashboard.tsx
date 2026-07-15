@@ -94,10 +94,12 @@ type Issue = {
     id: string;
     title: string;
     description: string;
+    reportedById: string;
     reportedBy: { name: string };
     statusId: string;
     status: IssueStatus;
     isArchived: boolean;
+    isVisibleToEveryone: boolean;
     createdAt: string;
     comments: {
         id: string;
@@ -2613,6 +2615,23 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                     >
                                                         {issueStatuses.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                     </select>
+                                                    <button
+                                                        type="button"
+                                                        role="switch"
+                                                        aria-checked={issue.isVisibleToEveryone}
+                                                        onClick={() => handleUpdateIssue(issue, { isVisibleToEveryone: !issue.isVisibleToEveryone })}
+                                                        className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800"
+                                                        title="Choose whether members other than the reporter can see this issue"
+                                                    >
+                                                        {issue.isVisibleToEveryone ? <Eye className="h-4 w-4 text-green-400" /> : <EyeOff className="h-4 w-4 text-amber-400" />}
+                                                        <span>Visible to everyone</span>
+                                                        <span className={`relative h-5 w-9 rounded-full transition-colors ${issue.isVisibleToEveryone ? 'bg-green-600' : 'bg-slate-600'}`}>
+                                                            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${issue.isVisibleToEveryone ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                                                        </span>
+                                                        <span className={`w-7 text-left font-bold ${issue.isVisibleToEveryone ? 'text-green-400' : 'text-slate-400'}`}>
+                                                            {issue.isVisibleToEveryone ? 'Yes' : 'No'}
+                                                        </span>
+                                                    </button>
                                                     <div className="flex gap-2">
                                                         <button
                                                             onClick={() => handleUpdateIssue(issue, { isArchived: !issue.isArchived })}

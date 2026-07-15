@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users, BookOpen, ListTodo, Shield } from 'lucide-react';
+import { LogOut, Clock, Calendar, CheckCircle, AlertCircle, Edit2, X, Save, AlertTriangle, Plus, MessageSquare, Trash2, FileText, ClipboardList, Truck, Users, BookOpen, ListTodo, Shield, EyeOff } from 'lucide-react';
 import FieldReportForm from './FieldReportForm';
 import ReportDetailModal from './ReportDetailModal';
 import UserTruckChecks from './UserTruckChecks';
@@ -955,6 +955,11 @@ export default function UserDashboard({ user }: UserDashboardProps) {
                                                         <span className={`px-2 py-1 rounded text-xs font-bold ${issue.status?.color?.includes('bg-') ? `${issue.status.color}/20 text-${issue.status.color.replace('bg-', '')}-400` : 'bg-slate-700 text-slate-300'}`}>
                                                             {issue.status?.name}
                                                         </span>
+                                                        {!issue.isVisibleToEveryone && user.id === issue.reportedById && (
+                                                            <span className="flex items-center gap-1 rounded bg-slate-800 px-2 py-1 text-xs font-bold text-slate-400" title="Only you and administrators can see this issue">
+                                                                <EyeOff className="h-3.5 w-3.5" /> Private
+                                                            </span>
+                                                        )}
                                                         {user.id === issue.reportedById && (
                                                             <div className="flex gap-1 ml-2">
                                                                 <button onClick={() => setEditingIssue(issue)} className="p-1 text-slate-500 hover:text-blue-400 transition-colors">

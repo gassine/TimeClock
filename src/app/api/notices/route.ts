@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { broadcastNoticeChange } from '@/lib/noticeStreams';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-this';
 
@@ -63,6 +64,8 @@ export async function POST(req: Request) {
             include: { author: { select: { name: true } } }
         });
 
+        broadcastNoticeChange('created');
+
         return NextResponse.json(newNotice);
     } catch (error) {
         console.error('Failed to create notice:', error);
@@ -93,6 +96,8 @@ export async function PUT(req: Request) {
         );
 
         await prisma.$transaction(updatePromises);
+
+        broadcastNoticeChange('reordered');
 
         return NextResponse.json({ success: true });
     } catch (error) {

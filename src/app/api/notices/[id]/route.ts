@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { broadcastNoticeChange } from '@/lib/noticeStreams';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-this';
 
@@ -53,6 +54,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             where: { id: noticeId }
         });
 
+        broadcastNoticeChange('deleted');
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Failed to delete notice:', error);
@@ -82,6 +85,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 isPinned: data.isPinned
             }
         });
+
+        broadcastNoticeChange('pinned');
 
         return NextResponse.json(updatedNotice);
     } catch (error) {
