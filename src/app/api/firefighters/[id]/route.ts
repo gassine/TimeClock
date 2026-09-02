@@ -3,9 +3,15 @@ import { formatPhoneNumber, isValidPhoneNumber } from '@/lib/utils';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { logAdminAction } from '@/lib/logger';
+import { getAuthUser } from '@/lib/auth';
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const user = await getAuthUser();
+        if (!user?.isAdmin) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = await params;
         const body = await request.json();
         const { name, roleId, stationId, shiftId, pin, isActive, password, phoneNumber, startDate, isHiddenFromDirectory, isAdmin } = body;
@@ -14,18 +20,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
             return NextResponse.json({ error: 'Invalid phone number format. Must be 10 or 11 digits.' }, { status: 400 });
         }
 
-        const updateData: any = {
-            name,
-            roleId,
-            stationId: stationId || null,
-            shiftId: shiftId || null,
-            pin,
-            isActive: isActive !== undefined ? isActive : undefined,
-            isAdmin: isAdmin !== undefined ? isAdmin : undefined,
-            phoneNumber: phoneNumber !== undefined ? formatPhoneNumber(phoneNumber) : undefined,
-            startDate: startDate !== undefined ? (startDate ? new Date(startDate) : null) : undefined,
-            isHiddenFromDirectory: isHiddenFromDirectory !== undefined ? isHiddenFromDirectory : undefined,
-        };
+        const updateData: Record<string, unknown> = {};
+        if (name !== undefined) updateData.name = name;
+        if (roleId !== undefined) updateData.roleId = roleId;
+        if (stationId !== undefined) updateData.stationId = stationId || null;
+        if (shiftId !== undefined) updateData.shiftId = shiftId || null;
+        if (pin !== undefined) updateData.pin = pin;
+        if (isActive !== undefined) updateData.isActive = isActive;
+        if (isAdmin !== undefined) updateData.isAdmin = isAdmin;
+        if (phoneNumber !== undefined) updateData.phoneNumber = formatPhoneNumber(phoneNumber);
+        if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
+        if (isHiddenFromDirectory !== undefined) updateData.isHiddenFromDirectory = isHiddenFromDirectory;
 
         // If password is provided, hash it
         if (password) {
@@ -39,6 +44,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         const updatedFirefighter = await prisma.firefighter.update({
             where: { id },
             data: updateData,
+            omit: { password: true },
             include: { role: true, station: true, shift: true },
         });
 
@@ -57,6 +63,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const user = await getAuthUser();
+        if (!user?.isAdmin) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = await params;
 
         // Transaction: Delete Time Entries first, then the Firefighter

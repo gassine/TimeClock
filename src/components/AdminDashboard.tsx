@@ -939,6 +939,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                     startDate: editingFirefighter.startDate,
                     isHiddenFromDirectory: editingFirefighter.isHiddenFromDirectory,
                     isAdmin: editingFirefighter.isAdmin,
+                    ...(editingPassword ? { password: editingPassword } : {}),
                 }),
             });
 
@@ -947,6 +948,7 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
 
             setFirefighters(firefighters.map(f => f.id === data.id ? data : f));
             setEditingFirefighter(null);
+            setEditingPassword('');
             setMessage('Firefighter updated successfully!');
         } catch (err: any) {
             setMessage(err.message);
@@ -1590,7 +1592,10 @@ export default function AdminDashboard({ initialFirefighters, initialRoles, init
                                                         }
                                                     </td>
                                                     <td className="py-3 px-4 text-right space-x-2">
-                                                        <button onClick={() => setEditingFirefighter(ff)} className="p-2 hover:bg-slate-600 rounded-lg transition-colors text-blue-400" title="Edit">
+                                                        <button onClick={() => {
+                                                            setEditingFirefighter(ff);
+                                                            setEditingPassword('');
+                                                        }} className="p-2 hover:bg-slate-600 rounded-lg transition-colors text-blue-400" title="Edit">
                                                             <Edit2 className="h-4 w-4" />
                                                         </button>
                                                         <button

@@ -17,6 +17,7 @@ export default async function AdminPage() {
 
     const [firefighters, roles, stations, shifts] = await Promise.all([
         prisma.firefighter.findMany({
+            omit: { password: true },
             include: { role: true, station: true, shift: true },
             orderBy: { name: 'asc' },
         }),

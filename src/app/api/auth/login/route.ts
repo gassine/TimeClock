@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies, headers } from 'next/headers';
 import { checkRateLimit, recordFailedAttempt, clearAttempts } from '@/lib/rateLimit';
-import { getJwtSecret } from '@/lib/auth';
+import { getJwtSecret, getPasswordVersion } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
@@ -63,7 +63,9 @@ export async function POST(request: NextRequest) {
                 name: firefighter.name,
                 isAdmin: firefighter.isAdmin,
                 role: firefighter.role.name,
-                pin: firefighter.pin
+                pin: firefighter.pin,
+                roleId: firefighter.roleId,
+                passwordVersion: getPasswordVersion(firefighter.password),
             },
             getJwtSecret(),
             { expiresIn: '8h' }
